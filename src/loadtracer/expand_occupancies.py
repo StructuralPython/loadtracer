@@ -1,10 +1,11 @@
-from typing import Optional, Any, Union
 from copy import deepcopy
-import jsonchain
 
 def expand_occupancy_loads(
     member_model: dict,
     occupancies: dict,
+    # TODO: Add these parameters so that loads can be explicitly added appropriately
+    # distributed_direction_mapping: dict,
+    # point_direction_mapping: dict,
 ) -> dict:
     """
     Returns a copy of 'member_model' with all occupancy loads
