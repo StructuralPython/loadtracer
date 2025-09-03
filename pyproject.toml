@@ -1,17 +1,24 @@
 [project]
 name = "loadtracer"
-version = "0.1.0"
-description = "Add your description here"
 readme = "README.md"
+dynamic = ['version', 'description']
 authors = [
-    { name = "Connor Ferster", email = "connorferster@gmail.com" }
+    { name = "Connor Ferster", email = "connor@structuralpython.com" }
 ]
 requires-python = ">=3.12"
-dependencies = []
-
-[project.scripts]
-loadtracer = "loadtracer:main"
+dependencies = [
+    "papermodels>=0.11.0",
+    "pygraphviz>=1.14",
+    "loadbearing_wall>=0.1.0",
+    "pynite-tools",
+    "jsonchain",
+]
 
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["flit_core >=3.2,<4"]
+build-backend = "flit_core.buildapi"
+
+[dependency-groups]
+dev = [
+    "ipykernel>=6.29.5",
+]

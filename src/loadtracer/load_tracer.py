@@ -86,8 +86,9 @@ class LoadTracer:
 
             # Have a wrapper for the member model so there is a consistent
             reactions = member_model.get_reactions(reactions_options)
-            forces = member_model.get_forces(forces_options)
-            deflections = member_model.get_deflections(deflections_options)
+            self.reactions.update({member_name: member_model.get_reactions()})
+            # forces = member_model.get_forces(forces_options)
+            # deflections = member_model.get_deflections(deflections_options)
 
             # Need to populate the member toml data with reactions and store it
 

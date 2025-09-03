@@ -1,7 +1,7 @@
 from copy import deepcopy
 import re
 from typing import Optional
-from eng_module.utils import str_to_float, parse_unit_system, convert_unit_string
+from .utils import str_to_float, parse_unit_system, convert_unit_string
 
 
 DEFAULT_ATTRS = {
