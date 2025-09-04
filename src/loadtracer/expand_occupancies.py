@@ -3,9 +3,7 @@ from copy import deepcopy
 def expand_occupancy_loads(
     member_model: dict,
     occupancies: dict,
-    # TODO: Add these parameters so that loads can be explicitly added appropriately
-    # distributed_direction_mapping: dict,
-    # point_direction_mapping: dict,
+    distributed_direction_mapping: dict,
 ) -> dict:
     """
     Returns a copy of 'member_model' with all occupancy loads
@@ -65,17 +63,20 @@ def expand_occupancy_loads(
     new_dist_loads = new_model['loads']['distributed_loads']
     for dist_load in member_model['loads']['distributed_loads']:
         occupancy = dist_load['occupancy']
-        if occupancy and occupancy in occupancies:
-            expanded_load = expand_distributed_load(dist_load, occupancies[occupancy])
-            new_dist_loads.append(expanded_load)
+        model_dir = dist_load['direction']
+        analysis_dirs = distributed_direction_mapping[model_dir]
+        for analysis_dir in analysis_dirs:
+            if occupancy and occupancy in occupancies:
+                expanded_load = expand_distributed_load(dist_load, occupancies[occupancy], analysis_dir)
+                new_dist_loads.append(expanded_load)
 
-        elif occupancy and occupancy not in occupancies:
-            raise ValueError(
-                f"Occupancy: {occupancy} not found in the occupancies data provided.\n"
-                f"Occupancies available: {[occ for occ in occupancies.keys()]}"
-            )
-        else:
-            new_dist_loads.append(dist_load)
+            elif occupancy and occupancy not in occupancies:
+                raise ValueError(
+                    f"Occupancy: {occupancy} not found in the occupancies data provided.\n"
+                    f"Occupancies available: {[occ for occ in occupancies.keys()]}"
+                )
+            else:
+                new_dist_loads.append(dist_load)
 
     return new_model
             
@@ -83,6 +84,7 @@ def expand_occupancy_loads(
 def expand_distributed_load(
     dist_load: dict,
     occupancy: dict,
+    analysis_dir: str,
 ) -> dict:
     """
     Returns a dict representing the expanded load of 'dist_load' according
@@ -98,7 +100,10 @@ def expand_distributed_load(
         expanded = {
             "start_magnitude": ex_start_mag,
             "end_magnitude": ex_end_mag,
-            "case": load_case
+            "start_loc": dist_load['start_loc'],
+            "end_loc": dist_load['end_loc'],
+            "case": load_case,
+            "dir": analysis_dir,
         }
         new_dist_load['expanded'].append(expanded)
     return new_dist_load
