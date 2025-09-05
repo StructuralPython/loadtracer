@@ -10,6 +10,7 @@ dependencies = [
     "papermodels>=0.11.0",
     "pygraphviz>=1.14",
     "loadbearing_wall>=0.1.0",
+    "PyniteFEA==1.1.2",
     "pynite-tools",
     "jsonchain",
 ]

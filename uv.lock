@@ -448,6 +448,7 @@ dependencies = [
     { name = "papermodels" },
     { name = "pygraphviz" },
     { name = "pynite-tools" },
+    { name = "pynitefea" },
 ]
 
 [package.dev-dependencies]
@@ -462,6 +463,7 @@ requires-dist = [
     { name = "papermodels", specifier = ">=0.11.0" },
     { name = "pygraphviz", specifier = ">=1.14" },
     { name = "pynite-tools" },
+    { name = "pynitefea", specifier = "==1.1.2" },
 ]
 
 [package.metadata.requires-dev]
