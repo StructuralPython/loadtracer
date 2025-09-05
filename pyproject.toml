@@ -7,12 +7,13 @@ authors = [
 ]
 requires-python = ">=3.12"
 dependencies = [
-    "papermodels>=0.11.0",
+    "papermodels==0.10.0",
     "pygraphviz>=1.14",
-    "loadbearing_wall>=0.1.0",
+    "loadbearing_wall>=0.2.0",
     "PyniteFEA==1.1.2",
-    "pynite-tools",
-    "jsonchain",
+    "safer>=5.1.0",
+    "jsonchain>=0.4.1",
+    "pynite-tools>=0.6.5",
 ]
 
 [build-system]
@@ -22,4 +23,5 @@ build-backend = "flit_core.buildapi"
 [dependency-groups]
 dev = [
     "ipykernel>=6.29.5",
+    "pytest>=8.4.0",
 ]

@@ -2,7 +2,7 @@ from dataclasses import dataclass
 import pathlib
 from typing import Optional, Any, Union
 import io
-
+import jsonchain
 from .analysis_model import AbstractAnalysisModel
 from .concentric_column import concentric_column as cc
 
@@ -20,33 +20,33 @@ class PointColumn(AbstractAnalysisModel):
         reactions = self.model.get_reactions()
         return reactions
     
-    def dump_model(self, fp: Optional[io.StringIO] = None, indent: int = 2) -> Optional[dict]:
+    def dump_model(self, filepath: Optional[str | pathlib.Path], indent: int = 2) -> Optional[dict]:
         """
         Dumps the model to 'fp'. If 'fp' is None, then a Python
         dict is returned.
         """
-        if fp is not None:
-            return self.model.dump(self.model, fp, indent=indent)
+        if filepath is not None:
+            return self.model.to_json(self.model, filepath, indent=indent)
         else:
             return self.model.dump_dict(self.model)
 
 
     def load_model(
         self, 
-        fp: Optional[io.StringIO] = None, 
+        filepath: Optional[str | pathlib.Path] = None, 
         model_data: Optional[dict] = None
     ) -> dict:
         """
         Loads the model from either 'fp' or 'model_data' and returns a dict
         """
-        if fp is not None:
-            return self.model.load(fp)
+        if filepath is not None:
+            return self.model.from_json(filepath)
         else:
-            return self.model.load_dict(model_data)
+            return self.model.from_dict(model_data)
 
     @classmethod
     def from_papermodel(
-        self,
+        cls,
         model_data: Optional[dict] = None,
         filepath: Optional[str | pathlib.Path] = None
     ) -> dict:
@@ -54,9 +54,10 @@ class PointColumn(AbstractAnalysisModel):
         Loads the model from either 'fp' or 'model_data' and returns a dict
         """
         if filepath is not None:
-            return cc.ConcentricColumn.from_json(filepath)
+            papermodel_data = jsonchain.load_json(filepath)
         else:
-            return cc.ConcentricColumn.from_dict(model_data)
+            papermodel_data = model_data
+        return cls(papermodel_data)
         
 
 def build_column_model(pm: dict) -> cc.ConcentricColumn:

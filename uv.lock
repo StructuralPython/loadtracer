@@ -428,14 +428,16 @@ wheels = [
 
 [[package]]
 name = "loadbearing-wall"
-version = "0.1.0"
+version = "0.2.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "load-distribution" },
+    { name = "pydantic" },
+    { name = "safer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/3d/49/f77d05dbe97a4ac4fe08861de15bb1240594fd97f6036246fef0496b6f63/loadbearing_wall-0.1.0.tar.gz", hash = "sha256:534d5659d680712ebbe203680c92dc459575d18af28e3d474cc8de8b46348de4", size = 41459 }
+sdist = { url = "https://files.pythonhosted.org/packages/8a/6d/502ddff00bd50809797153072df73eb1b04633318da177f791e9f7795441/loadbearing_wall-0.2.0.tar.gz", hash = "sha256:3408998b3a12f485112b97636fa538870f8892c6b4923deaf97156695ac34bdf", size = 8117 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/0d/cd/9ef7b953d99319be93bd13c44b333c4b51b75dd660497da1ab24772af5d9/loadbearing_wall-0.1.0-py3-none-any.whl", hash = "sha256:ee238352440ff7343b23f9d6098715a123fc37dceb2fb2bfb45f229b7e23a19d", size = 8692 },
+    { url = "https://files.pythonhosted.org/packages/d1/2c/12fd35baecbd1ec51032baeab4c1d4e0450e3b71cf98b64b4169532aea62/loadbearing_wall-0.2.0-py3-none-any.whl", hash = "sha256:aabc1f6b640448d322670de1cfae01400ef8e7e373d1714cdcccf382b0a86ed4", size = 8614 },
 ]
 
 [[package]]
@@ -449,25 +451,31 @@ dependencies = [
     { name = "pygraphviz" },
     { name = "pynite-tools" },
     { name = "pynitefea" },
+    { name = "safer" },
 ]
 
 [package.dev-dependencies]
 dev = [
     { name = "ipykernel" },
+    { name = "pytest" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "jsonchain" },
-    { name = "loadbearing-wall", specifier = ">=0.1.0" },
-    { name = "papermodels", specifier = ">=0.11.0" },
+    { name = "jsonchain", specifier = ">=0.4.1" },
+    { name = "loadbearing-wall", specifier = ">=0.2.0" },
+    { name = "papermodels", specifier = "==0.10.0" },
     { name = "pygraphviz", specifier = ">=1.14" },
-    { name = "pynite-tools" },
+    { name = "pynite-tools", specifier = ">=0.6.5" },
     { name = "pynitefea", specifier = "==1.1.2" },
+    { name = "safer", specifier = ">=5.1.0" },
 ]
 
 [package.metadata.requires-dev]
-dev = [{ name = "ipykernel", specifier = ">=6.29.5" }]
+dev = [
+    { name = "ipykernel", specifier = ">=6.29.5" },
+    { name = "pytest", specifier = ">=8.4.0" },
+]
 
 [[package]]
 name = "lxml"
@@ -706,12 +714,11 @@ wheels = [
 
 [[package]]
 name = "papermodels"
-version = "0.11.0"
+version = "0.10.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "colour" },
     { name = "forallpeople" },
-    { name = "load-distribution" },
     { name = "matplotlib" },
     { name = "networkx" },
     { name = "numpy" },
@@ -726,9 +733,9 @@ dependencies = [
     { name = "shapely" },
     { name = "tomli-w" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/42/e8/09064e26243f7c473a8d69920fa659f4ea6e21d5a383c6fc92e53f554710/papermodels-0.11.0.tar.gz", hash = "sha256:df4b5b6d074eb2ea7c9ba353719dd28ca323b8ec38af2345bd10aacc88cd5a81", size = 5694594 }
+sdist = { url = "https://files.pythonhosted.org/packages/f7/85/9dcfe72c94db21bc1cb7e1ee67948babf19cda6a7060a50cf7c7fbd67aa2/papermodels-0.10.0.tar.gz", hash = "sha256:ecd1bc584ebded0ea74b2da44225a9386879b9d939bfaaf3b4e1c635b4d84bb5", size = 5661608 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ef/15/af89e02764e47622a982041f820777f55af357e1554777077fea008daed5/papermodels-0.11.0-py2.py3-none-any.whl", hash = "sha256:e18e96a461b502154a3c277f685160653360c38c564241dd28045a36a7ebb2be", size = 55774 },
+    { url = "https://files.pythonhosted.org/packages/ee/c8/291bcf777ea5d2a7f0253506a9787862cb9c187cbfa6190d7d8699927619/papermodels-0.10.0-py2.py3-none-any.whl", hash = "sha256:9e1fd226c14cfae6dd2c0c84aa38b196a32bee6483ac69471168f1b72230fc4e", size = 50466 },
 ]
 
 [[package]]

@@ -110,17 +110,21 @@ def expand_reaction_loads(
             dist_load,
             member_reactions,
             transfer_source,
-            transfer_index,
             model_direction,
             distributed_direction_mapping
         )
-        transfer_reactions = indexed_reactions[transfer_index]
+        try:
+            transfer_reactions = indexed_reactions[transfer_index]
+        except:
+            print(f"{indexed_reactions=}")
+            print(f"{member_reactions=}")
+            print(f"{dist_load=}")
+            raise ValueError("Problem")
         new_dist_load = copy(dist_load)
         new_dist_load.setdefault('expanded', [])
         new_dist_load['expanded'] += transfer_reactions
         new_dist_loads.append(new_dist_load)
     return new_model
-
 
 
 def expand_point_reactions(
@@ -259,6 +263,7 @@ def expand_distributed_reactions(
     acc = {}
     for index, node_id in enumerate(transfer_reactions):
         acc[index] = []
+        # TODO: Deal with this hard-coded key from pynite_tools
         loads_by_dir = transfer_reactions[node_id]
         analysis_dirs = distributed_direction_mapping[model_direction]
         for analysis_dir in analysis_dirs:

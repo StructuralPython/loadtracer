@@ -63,7 +63,8 @@ def expand_occupancy_loads(
     new_dist_loads = new_model['loads']['distributed_loads']
     for dist_load in member_model['loads']['distributed_loads']:
         occupancy = dist_load['occupancy']
-        model_dir = dist_load['direction']
+        model_dir = dist_load.get('direction', 'gravity')
+        print(distributed_direction_mapping)
         analysis_dirs = distributed_direction_mapping[model_dir]
         for analysis_dir in analysis_dirs:
             if occupancy and occupancy in occupancies:

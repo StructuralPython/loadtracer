@@ -27,7 +27,6 @@ class AbstractAnalysisModel(ABC):
     def load_model(self, fp: Optional[io.StringIO] = None, model_data: Optional[dict] = None): 
         raise NotImplementedError
 
-    @abstractmethod
     @classmethod
     def from_papermodel(self, filepath: Optional[str | pathlib.Path] = None, model_data: Optional[dict] = None):
         raise NotImplementedError

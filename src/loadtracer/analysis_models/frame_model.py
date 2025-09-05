@@ -6,6 +6,8 @@ import io
 from .analysis_model import AbstractAnalysisModel
 from Pynite import FEModel3D
 import pynite_tools as pt
+import jsonchain
+
 
 
 @dataclass
@@ -18,7 +20,7 @@ class PyniteFrame(AbstractAnalysisModel):
 
     def get_reactions(self):
         self.model.analyze_linear()
-        reactions = pt.extract_node_reactions(self.model)
+        reactions = pt.extract_node_reactions(self.model, results_key=None)
         return reactions
     
     def dump_model(self, fp: Optional[io.StringIO] = None, indent: int = 2) -> Optional[dict]:
@@ -107,33 +109,35 @@ def build_pynite_frame_model(
     # Add loads
     load_cases = set()
     for dist_load in pm['loads']['distributed_loads']:
-        load_cases.add(dist_load['expanded']['case'])
-        model.add_member_dist_load(
-            pm['element_attributes']['tag'],
-            direction=dist_load['expanded']['dir'],
-            w1=dist_load['expanded']['start_magnitude'],
-            w2=dist_load['expanded']['end_magnitude'],
-            x1=dist_load['expanded']['start_loc'],
-            x2=dist_load['expanded']['end_loc'],
-            case=dist_load['expanded']['case'],
-        )
+        for expansion in dist_load['expanded']:
+            load_cases.add(expansion['case'])
+            model.add_member_dist_load(
+                pm['element_attributes']['tag'],
+                direction=expansion['dir'],
+                w1=expansion['start_magnitude'],
+                w2=expansion['end_magnitude'],
+                x1=expansion['start_loc'],
+                x2=expansion['end_loc'],
+                case=expansion['case'],
+            )
 
-    for point_load in pm['loads']['point_loads']['expanded']:
-        load_cases.add(point_load['expanded']['case'])
-        model.add_member_pt_load(
-            pm['element_attributes']['tag'],
-            direction=point_load['expanded']['dir'],
-            P=point_load['expanded']['magnitude'],
-            x=point_load['expanded']['location'],
-            case=point_load['expanded']['case'],
-        )
+    for point_load in pm['loads']['point_loads']:
+        for expansion in point_load['expanded']:
+            load_cases.add(expansion['case'])
+            model.add_member_pt_load(
+                pm['element_attributes']['tag'],
+                direction=expansion['dir'],
+                P=expansion['magnitude'],
+                x=expansion['location'],
+                case=expansion['case'],
+            )
 
     # Add load combinations
     for load_combination in load_combinations:
         model.add_load_combo(**load_combination)
 
     # Add load cases as combinations
-    for load_case in sorted(load_cases)
+    for load_case in sorted(load_cases):
         case_combo = {"name": load_case, "factors": {load_case: 1.0}}
         model.add_load_combo(**case_combo)
 

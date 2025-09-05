@@ -1,5 +1,7 @@
 from pydantic import BaseModel
 from typing import Optional
+import pathlib
+import safer
 
 
 class ConcentricColumn(BaseModel):
@@ -9,6 +11,25 @@ class ConcentricColumn(BaseModel):
     strong_axis_dir: str = "y"
     weak_axis_dir: str = "x"
     reverse_reaction_sign: bool = False
+
+    @classmethod
+    def from_json(self, filepath: str | pathlib.Path):
+        with safer.open(filepath) as file:
+            json_data = file.read()
+        return self.model_validate_json(json_data)
+
+    def to_json(self, filepath: str | pathlib.Path, indent=2):
+        json_data = self.model_dump_json(indent=indent)
+        with safer.open(filepath, "w") as file:
+            file.write(json_data)
+
+    @classmethod
+    def from_dict(self, data: dict):
+        return self.model_validate(data)
+
+    def dump_dict(self):
+        return self.model_dump(mode="json")
+
 
     def add_point_load(
         self,
