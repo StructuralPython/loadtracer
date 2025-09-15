@@ -320,16 +320,16 @@ wheels = [
 
 [[package]]
 name = "jsonchain"
-version = "0.4.1"
+version = "0.5.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "deepmerge" },
     { name = "openpyxl" },
     { name = "safer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/88/59/73a9b1e887705786a806a06e2b0a223e11ef706a02e37182b9a1753f6c67/jsonchain-0.4.1.tar.gz", hash = "sha256:2f43dbad0cc21329914c69f0dddf065e9ad2e04da2c4ec276794123692593c7b", size = 18808 }
+sdist = { url = "https://files.pythonhosted.org/packages/0e/b5/5a04343b4ecf1ccfb4be5236d5b540f68ae0c0acc596f6c1ef7424d34e22/jsonchain-0.5.1.tar.gz", hash = "sha256:2cdb9b891d5cfd2643d4dcc289a543af5affa5a7053ea8e1988d3f728bc3d217", size = 19539 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b6/96/eb909ffa7545050f50126b3e1f2f1f31ebb0c9d84cd541d14cffa8326daf/jsonchain-0.4.1-py3-none-any.whl", hash = "sha256:2e40cf7dfe952ddca7e0e3901ee0fb4a4841851e658d17933e4f5ea516a8ddce", size = 11778 },
+    { url = "https://files.pythonhosted.org/packages/60/89/8de431d8eaafa98ee04cb2106ec3cb8d8b6f615fc643549bc9842ea66cf1/jsonchain-0.5.1-py3-none-any.whl", hash = "sha256:9caf416ab7594b03d96d181f939f0ffa26bd87d66ef4b05c49f6072af353b2a3", size = 12336 },
 ]
 
 [[package]]
@@ -462,9 +462,9 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "jsonchain", specifier = ">=0.4.1" },
+    { name = "jsonchain", specifier = ">=0.5.0" },
     { name = "loadbearing-wall", specifier = ">=0.2.0" },
-    { name = "papermodels", specifier = "==0.10.0" },
+    { name = "papermodels", specifier = "==0.11.5" },
     { name = "pygraphviz", specifier = ">=1.14" },
     { name = "pynite-tools", specifier = ">=0.6.5" },
     { name = "pynitefea", specifier = "==1.1.2" },
@@ -714,11 +714,12 @@ wheels = [
 
 [[package]]
 name = "papermodels"
-version = "0.10.0"
+version = "0.11.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "colour" },
     { name = "forallpeople" },
+    { name = "load-distribution" },
     { name = "matplotlib" },
     { name = "networkx" },
     { name = "numpy" },
@@ -733,9 +734,9 @@ dependencies = [
     { name = "shapely" },
     { name = "tomli-w" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f7/85/9dcfe72c94db21bc1cb7e1ee67948babf19cda6a7060a50cf7c7fbd67aa2/papermodels-0.10.0.tar.gz", hash = "sha256:ecd1bc584ebded0ea74b2da44225a9386879b9d939bfaaf3b4e1c635b4d84bb5", size = 5661608 }
+sdist = { url = "https://files.pythonhosted.org/packages/b9/d4/c1d5a6a933c181bb623cbd2f28338b2fb799ae531d6e4bda0c5953db32e2/papermodels-0.11.5.tar.gz", hash = "sha256:00cb4fab63eb9e061660d141470ec77e60334be59bce1e8efe8e732df334dfc9", size = 5694913 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ee/c8/291bcf777ea5d2a7f0253506a9787862cb9c187cbfa6190d7d8699927619/papermodels-0.10.0-py2.py3-none-any.whl", hash = "sha256:9e1fd226c14cfae6dd2c0c84aa38b196a32bee6483ac69471168f1b72230fc4e", size = 50466 },
+    { url = "https://files.pythonhosted.org/packages/bd/a8/dc6114bfde1fd04c81b429c59edf0cb5107cd083bb80914bd19d73923ab9/papermodels-0.11.5-py2.py3-none-any.whl", hash = "sha256:5404b3e17ececfcec65359445c77e775cb71880bd7682c32ff2db004062cde57", size = 56030 },
 ]
 
 [[package]]

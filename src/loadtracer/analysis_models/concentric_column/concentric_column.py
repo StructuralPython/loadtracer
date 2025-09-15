@@ -57,6 +57,8 @@ class ConcentricColumn(BaseModel):
         given 'dir' (direction) and 'case' (load case).
         """
         acc = {}
+        if self.point_loads is None:
+            return acc
         for p in self.point_loads:
             dir = p['direction']
             acc.setdefault(dir, {})

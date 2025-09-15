@@ -116,9 +116,6 @@ def expand_reaction_loads(
         try:
             transfer_reactions = indexed_reactions[transfer_index]
         except:
-            print(f"{indexed_reactions=}")
-            print(f"{member_reactions=}")
-            print(f"{dist_load=}")
             raise ValueError("Problem")
         new_dist_load = copy(dist_load)
         new_dist_load.setdefault('expanded', [])
@@ -267,7 +264,9 @@ def expand_distributed_reactions(
         loads_by_dir = transfer_reactions[node_id]
         analysis_dirs = distributed_direction_mapping[model_direction]
         for analysis_dir in analysis_dirs:
-            load_cases = loads_by_dir.get(analysis_dir, None)
+            # HACK TO FIX
+            # load_cases = loads_by_dir.get(analysis_dir, None)
+            load_cases = loads_by_dir.get(analysis_dir, analysis_dir.title())
             assert load_cases is not None
             if isinstance(load_cases, dict):
                 # Typical condition from a frame member

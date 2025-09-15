@@ -15,13 +15,11 @@ class LoadbearingWall(AbstractAnalysisModel):
     vertical_spread_angle: float = 0.0
 
     def __post_init__(self):
-        print(f"WALL MODEL: {self.pm['element_attributes']['tag']=}")
         self.model = build_linear_wall_model(self.pm, self.vertical_spread_angle)
 
     def get_reactions(self):
         reactions = self.model.get_reactions()
-        print(reactions)
-        return reactions
+        return {0: reactions}
     
     def dump_model(self, filepath: Optional[str | pathlib.Path] = None, indent: int = 2) -> Optional[dict]:
         """

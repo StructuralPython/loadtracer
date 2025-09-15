@@ -20,7 +20,7 @@ class PointColumn(AbstractAnalysisModel):
         reactions = self.model.get_reactions()
         return reactions
     
-    def dump_model(self, filepath: Optional[str | pathlib.Path], indent: int = 2) -> Optional[dict]:
+    def dump_model(self, filepath: Optional[str | pathlib.Path] = None, indent: int = 2) -> Optional[dict]:
         """
         Dumps the model to 'fp'. If 'fp' is None, then a Python
         dict is returned.
@@ -28,7 +28,7 @@ class PointColumn(AbstractAnalysisModel):
         if filepath is not None:
             return self.model.to_json(self.model, filepath, indent=indent)
         else:
-            return self.model.dump_dict(self.model)
+            return self.model.dump_dict()
 
 
     def load_model(
@@ -65,7 +65,7 @@ def build_column_model(pm: dict) -> cc.ConcentricColumn:
     Returns a LinearWallModel based on the data within 'pm'
     """
     column = cc.ConcentricColumn(
-        pm['element_attributes']['height'],
+        height=pm['element_attributes']['height'],
         gravity_dir="Fx",
         strong_axis_dir="Fy",
         weak_axis_dir="Fz",
