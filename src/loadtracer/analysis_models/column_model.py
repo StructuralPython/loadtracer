@@ -73,6 +73,12 @@ def build_column_model(pm: dict) -> cc.ConcentricColumn:
     )
     for point_load in pm['loads']['point_loads']:
         for pt_component in point_load['expanded']:
-            column.add_point_load(**pt_component)
+            column.add_point_load(
+                pt_component['magnitude'],
+                pt_component['location'],
+                pt_component['case'],
+                pt_component['dir']
+            )
+            # column.add_point_load(**pt_component)
     return column
 
