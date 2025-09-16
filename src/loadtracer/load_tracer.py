@@ -30,9 +30,9 @@ class LoadTracer(BaseModel, arbitrary_types_allowed=True):
     )
     reaction_distributed_load_direction_mapping: dict = Field(
         default={
-            "gravity": ["FY"],
-            "inplane": ["FX"],
-            "out_of_plane": ["FZ"]
+            "gravity": ["Fy"],
+            "inplane": ["Fx"],
+            "out_of_plane": ["Fz"]
         }
     )
     reaction_point_load_direction_mapping: dict = Field(

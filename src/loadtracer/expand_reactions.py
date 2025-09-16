@@ -264,9 +264,7 @@ def expand_distributed_reactions(
         loads_by_dir = transfer_reactions[node_id]
         analysis_dirs = distributed_direction_mapping[model_direction]
         for analysis_dir in analysis_dirs:
-            # HACK TO FIX
-            # load_cases = loads_by_dir.get(analysis_dir, None)
-            load_cases = loads_by_dir.get(analysis_dir, analysis_dir.title())
+            load_cases = loads_by_dir.get(analysis_dir, None)
             assert load_cases is not None
             if isinstance(load_cases, dict):
                 # Typical condition from a frame member
