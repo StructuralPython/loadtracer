@@ -34,7 +34,7 @@ def expand_occupancy_loads(
         (in the case of distributed loads).
     """
     new_model = deepcopy(member_model)
-    new_model['loads']['point_loads'] = []
+    # new_model['loads']['point_loads'] = []
 
     # Below is a place-holder implementation for point loads for if/when
     # papermodels implements point supports that can interact with loads
