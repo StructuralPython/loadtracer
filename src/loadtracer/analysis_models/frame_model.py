@@ -9,7 +9,6 @@ import pynite_tools as pt
 import jsonchain
 
 
-
 @dataclass
 class PyniteFrame(AbstractAnalysisModel):
     pm: dict
@@ -22,8 +21,10 @@ class PyniteFrame(AbstractAnalysisModel):
         self.model.analyze_linear()
         reactions = pt.extract_node_reactions(self.model, results_key=None)
         return reactions
-    
-    def dump_model(self, fp: Optional[io.StringIO] = None, indent: int = 2) -> Optional[dict]:
+
+    def dump_model(
+        self, fp: Optional[io.StringIO] = None, indent: int = 2
+    ) -> Optional[dict]:
         """
         Dumps the model to 'fp'. If 'fp' is None, then a Python
         dict is returned.
@@ -33,11 +34,8 @@ class PyniteFrame(AbstractAnalysisModel):
         else:
             return pt.dump_dict(self.model)
 
-
     def load_model(
-        self, 
-        fp: Optional[io.StringIO] = None, 
-        model_data: Optional[dict] = None
+        self, fp: Optional[io.StringIO] = None, model_data: Optional[dict] = None
     ) -> dict:
         """
         Loads the model from either 'fp' or 'model_data' and returns a dict
@@ -51,7 +49,7 @@ class PyniteFrame(AbstractAnalysisModel):
     def from_papermodel(
         self,
         model_data: Optional[dict] = None,
-        filepath: Optional[str | pathlib.Path] = None
+        filepath: Optional[str | pathlib.Path] = None,
     ) -> dict:
         """
         Loads the model from either 'fp' or 'model_data' and returns a dict
@@ -80,7 +78,6 @@ def build_pynite_frame_model(
     if section is None:
         section = pynite_default_section()
 
-
     model.add_material(**material)
     model.add_section(**section)
 
@@ -98,38 +95,38 @@ def build_pynite_frame_model(
 
     # Define the member
     model.add_member(
-        name=pm['element_attributes']['tag'],
+        name=pm["element_attributes"]["tag"],
         i_node="N0",
         j_node=node_name,
-        material_name=material['name'],
-        section_name=section['name'],
-        rotation=0.0
+        material_name=material["name"],
+        section_name=section["name"],
+        rotation=0.0,
     )
 
     # Add loads
     load_cases = set()
-    for dist_load in pm['loads']['distributed_loads']:
-        for expansion in dist_load['expanded']:
-            load_cases.add(expansion['case'])
+    for dist_load in pm["loads"]["distributed_loads"]:
+        for expansion in dist_load["expanded"]:
+            load_cases.add(expansion["case"])
             model.add_member_dist_load(
-                pm['element_attributes']['tag'],
-                direction=expansion['dir'],
-                w1=expansion['start_magnitude'],
-                w2=expansion['end_magnitude'],
-                x1=expansion['start_loc'],
-                x2=expansion['end_loc'],
-                case=expansion['case'],
+                pm["element_attributes"]["tag"],
+                direction=expansion["dir"],
+                w1=expansion["start_magnitude"],
+                w2=expansion["end_magnitude"],
+                x1=expansion["start_loc"],
+                x2=expansion["end_loc"],
+                case=expansion["case"],
             )
 
-    for point_load in pm['loads']['point_loads']:
-        for expansion in point_load['expanded']:
-            load_cases.add(expansion['case'])
+    for point_load in pm["loads"]["point_loads"]:
+        for expansion in point_load["expanded"]:
+            load_cases.add(expansion["case"])
             model.add_member_pt_load(
-                pm['element_attributes']['tag'],
-                direction=expansion['dir'],
-                P=expansion['magnitude'],
-                x=expansion['location'],
-                case=expansion['case'],
+                pm["element_attributes"]["tag"],
+                direction=expansion["dir"],
+                P=expansion["magnitude"],
+                x=expansion["location"],
+                case=expansion["case"],
             )
 
     # Add load combinations
@@ -145,14 +142,7 @@ def build_pynite_frame_model(
 
 
 def pynite_default_material():
-    return {
-        "name": "default",
-        "E": 1,
-        "G": 1,
-        "nu": 0.5,
-        "rho": 1.0,
-        "fy": 1.0
-    }
+    return {"name": "default", "E": 1, "G": 1, "nu": 0.5, "rho": 1.0, "fy": 1.0}
 
 
 def pynite_default_section():
@@ -170,17 +160,14 @@ def get_node_locations(pm: dict) -> list[tuple]:
     Returns the node locations
     """
     acc = []
-    for support in pm['element_geometry']['supports']:
-        location = support['location']
-        fixity = support['fixity']
+    for support in pm["element_geometry"]["supports"]:
+        location = support["location"]
+        fixity = support["fixity"]
         constraints = None
-        if fixity == "pin": 
+        if fixity == "pin":
             constraints = [1, 1, 1, 1, 1, 0]
-        elif fixity == "roller": 
-            constraints =  [0, 1, 0, 0, 0, 0]
+        elif fixity == "roller":
+            constraints = [0, 1, 0, 0, 0, 0]
         assert constraints is not None
-        acc.append(
-            (location, constraints)
-        )
+        acc.append((location, constraints))
     return sorted(acc, key=lambda x: x[0])
-        

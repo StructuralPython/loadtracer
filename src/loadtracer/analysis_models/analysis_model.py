@@ -12,6 +12,7 @@ class AbstractAnalysisModel(ABC):
     'pm': A papermodels model (dict)
     'model': An attribute to store the analysis model while it is being used
     """
+
     pm: dict
     model: Optional[Any] = None
 
@@ -23,11 +24,16 @@ class AbstractAnalysisModel(ABC):
         If 'fp' is None, then a dict is returned
         """
         raise NotImplementedError
-    
-    def load_model(self, fp: Optional[io.StringIO] = None, model_data: Optional[dict] = None): 
+
+    def load_model(
+        self, fp: Optional[io.StringIO] = None, model_data: Optional[dict] = None
+    ):
         raise NotImplementedError
 
     @classmethod
-    def from_papermodel(self, filepath: Optional[str | pathlib.Path] = None, model_data: Optional[dict] = None):
+    def from_papermodel(
+        self,
+        filepath: Optional[str | pathlib.Path] = None,
+        model_data: Optional[dict] = None,
+    ):
         raise NotImplementedError
-    

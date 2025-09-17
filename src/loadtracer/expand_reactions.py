@@ -2,6 +2,7 @@ from typing import Optional, Union, Any
 from copy import deepcopy, copy
 import jsonchain
 
+
 def expand_reaction_loads(
     member_model: dict,
     member_reactions: dict,
@@ -22,7 +23,7 @@ def expand_reaction_loads(
         (i.e. order of appearance in local x-ordinates). Therefore the names
         of each node should be irrelevant to the mapping since they will
         be assigned by numerical index.
-        e.g. 
+        e.g.
         {
             'member_name': {
                 'node_id0': {
@@ -54,16 +55,16 @@ def expand_reaction_loads(
             },
         }
 
-    'distributed_direction_mapping' / 'point_direction_mapping': 
+    'distributed_direction_mapping' / 'point_direction_mapping':
         A dictionary mapping of the names of the load directions
         from papermodels (i.e. 'gravity', 'inplane', 'out_of_plane')
         and the reaction directions they should map from the node reactions.
 
         The mapping value can be either a single string or a list of values, e.g.
 
-        {'gravity': ["FY"]} - This will only apply the FY reaction load components 
+        {'gravity': ["FY"]} - This will only apply the FY reaction load components
             from the node_reactions. If this dictionary is passed as a distributed
-            direction mapping, then the FY value will be applied as both the 
+            direction mapping, then the FY value will be applied as both the
             'start_magnitude' and 'end_magnitude' value of a distributed load.
             If it is for a point load mapping, then it will apply to the magnitude
 
@@ -74,52 +75,52 @@ def expand_reaction_loads(
     """
     # POINT LOADS
     new_model = deepcopy(member_model)
-    new_model['loads']['point_loads'] = []
-    new_point_loads = new_model['loads']['point_loads']
-    for point_load in member_model['loads']['point_loads']:
-        transfer_source = point_load['transfer_source']
+    new_model["loads"]["point_loads"] = []
+    new_point_loads = new_model["loads"]["point_loads"]
+    for point_load in member_model["loads"]["point_loads"]:
+        transfer_source = point_load["transfer_source"]
         if not transfer_source:
             new_point_loads.append(point_load)
             continue
-        transfer_index = point_load['transfer_reaction_index']
-        model_direction = point_load['direction']
+        transfer_index = point_load["transfer_reaction_index"]
+        model_direction = point_load["direction"]
         indexed_reactions = expand_point_reactions(
             point_load,
             member_reactions,
             transfer_source,
             model_direction,
-            point_direction_mapping
+            point_direction_mapping,
         )
         transfer_reactions = indexed_reactions[transfer_index]
         new_point_load = copy(point_load)
         new_point_load.setdefault("expanded", [])
-        new_point_load['expanded'] += transfer_reactions
+        new_point_load["expanded"] += transfer_reactions
         new_point_loads.append(new_point_load)
 
     # DISTRIBUTED LOADS
-    new_model['loads']['distributed_loads'] = []
-    new_dist_loads = new_model['loads']['distributed_loads']
-    for dist_load in member_model['loads']['distributed_loads']:
-        transfer_source = dist_load['transfer_source']
+    new_model["loads"]["distributed_loads"] = []
+    new_dist_loads = new_model["loads"]["distributed_loads"]
+    for dist_load in member_model["loads"]["distributed_loads"]:
+        transfer_source = dist_load["transfer_source"]
         if not transfer_source:
             new_dist_loads.append(dist_load)
             continue
-        transfer_index = dist_load['transfer_reaction_index']
-        model_direction = dist_load['direction']
+        transfer_index = dist_load["transfer_reaction_index"]
+        model_direction = dist_load["direction"]
         indexed_reactions = expand_distributed_reactions(
             dist_load,
             member_reactions,
             transfer_source,
             model_direction,
-            distributed_direction_mapping
+            distributed_direction_mapping,
         )
         try:
             transfer_reactions = indexed_reactions[transfer_index]
         except:
             raise ValueError("Problem")
         new_dist_load = copy(dist_load)
-        new_dist_load.setdefault('expanded', [])
-        new_dist_load['expanded'] += transfer_reactions
+        new_dist_load.setdefault("expanded", [])
+        new_dist_load["expanded"] += transfer_reactions
         new_dist_loads.append(new_dist_load)
     return new_model
 
@@ -129,7 +130,7 @@ def expand_point_reactions(
     member_reactions,
     transfer_source,
     model_direction,
-    point_direction_mapping
+    point_direction_mapping,
 ) -> dict:
     """
     Returns a dictionary of load point reactions structured the following way:
@@ -137,7 +138,7 @@ def expand_point_reactions(
     1. Keyed by reaction index (reaction indexes are assumed to be solve in x-positive
         bias direction
     )
-    Values are a list of 
+    Values are a list of
 
     Example output:
 
@@ -182,11 +183,11 @@ def expand_point_reactions(
         for analysis_dir in analysis_dirs:
             load_cases = loads_by_dir.get(analysis_dir, None)
             assert load_cases is not None
-                # Typical condition from a frame member
+            # Typical condition from a frame member
             for case_name, magnitude in load_cases.items():
                 new_point_load = {
                     "magnitude": magnitude,
-                    "location": point_load['location'],
+                    "location": point_load["location"],
                     "case": case_name,
                     "dir": analysis_dir,
                 }
@@ -195,11 +196,11 @@ def expand_point_reactions(
 
 
 def expand_distributed_reactions(
-    dist_load, 
+    dist_load,
     member_reactions,
     transfer_source,
     model_direction,
-    distributed_direction_mapping
+    distributed_direction_mapping,
 ) -> dict:
     """
     Returns a dictionary of load distributed reactions structured the following way:
@@ -207,7 +208,7 @@ def expand_distributed_reactions(
     1. Keyed by reaction index (reaction indexes are assumed to be solve in x-positive
         bias direction
     )
-    Value for the key is a list of dicts representing complete 
+    Value for the key is a list of dicts representing complete
     distributed load descriptions.
 
     Example output:
@@ -232,7 +233,7 @@ def expand_distributed_reactions(
             },
             ...
         ],
-        ...   
+        ...
         1: [ # reaction index
             {
                 "start_magnitude": magnitude_value,
@@ -252,10 +253,15 @@ def expand_distributed_reactions(
             },
             ...
         ],
-        ...     
+        ...
     }
     """
+    # print(f"{transfer_source=} | {member_reactions.keys()=} | {member_reactions.get(transfer_source)=}")
     transfer_reactions = member_reactions.get(transfer_source, None)
+    if transfer_source == "WT4.0":
+        print(transfer_source)
+        # print(f"{member_reactions.get(transfer_source)=}")
+
     assert transfer_reactions is not None
     acc = {}
     for index, node_id in enumerate(transfer_reactions):
@@ -264,22 +270,44 @@ def expand_distributed_reactions(
         loads_by_dir = transfer_reactions[node_id]
         analysis_dirs = distributed_direction_mapping[model_direction]
         for analysis_dir in analysis_dirs:
+            # HACK: To Fix
             load_cases = loads_by_dir.get(analysis_dir, None)
+            if load_cases is None:
+                load_cases = loads_by_dir.get(analysis_dir.title(), None)
+            # if transfer_source=="WT4.0":
+            print(f"{load_cases=}")
+            # Original
+            # load_cases = loads_by_dir.get(analysis_dir, None)
+            # print(f"{analysis_dir=} | {loads_by_dir=}")
             assert load_cases is not None
             if isinstance(load_cases, dict):
-                # Typical condition from a frame member
-                for case_name, magnitude in load_cases.items():
-                    new_dist_load = {
-                        "start_magnitude": magnitude,
-                        "end_magnitude": magnitude,
-                        "start_loc": dist_load['start_loc'],
-                        "end_loc": dist_load['end_loc'],
-                        "case": case_name,
-                        "dir": analysis_dir,
-
-                    }
-                    acc[index].append(new_dist_load)
+                for case_name, load in load_cases.items():
+                    if isinstance(load, list):
+                        # Load from a wall
+                        for subload in load:
+                            new_dist_load = {
+                                "start_magnitude": subload["start_magnitude"],
+                                "end_magnitude": subload["end_magnitude"],
+                                "start_loc": dist_load["start_loc"],
+                                "end_loc": dist_load["end_loc"],
+                                "case": case_name,
+                                "dir": analysis_dir,
+                            }
+                            acc[index].append(new_dist_load)
+                    else:
+                        # Load from a frame member
+                        new_dist_load = {
+                            "start_magnitude": load,
+                            "end_magnitude": load,
+                            "start_loc": dist_load["start_loc"],
+                            "end_loc": dist_load["end_loc"],
+                            "case": case_name,
+                            "dir": analysis_dir,
+                        }
+                        acc[index].append(new_dist_load)
             elif isinstance(load_cases, list):
+                if transfer_source == "J4.0":
+                    print("CLAUSE 2")
                 # When the member is a loadbearing_wall and has a list of reactions
                 for case_dist_load in load_cases:
                     new_dist_load = copy(case_dist_load)
@@ -287,4 +315,6 @@ def expand_distributed_reactions(
                     # Need to update direction with analysis dir
                     new_dist_load.update({"dir": analysis_dir})
                     acc[index].append(new_dist_load)
+    if transfer_source == "J4.0":
+        print(f"{acc=}")
     return acc

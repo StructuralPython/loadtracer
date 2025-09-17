@@ -10,7 +10,7 @@ def get_element_height(pm: dict, elevations: dict):
         name and the values are the floor elevation
     """
     elevations_from_bottom = sorted(elevations.values())
-    floor_index = extract_floor_index(pm['element_attributes']['tag'])
+    floor_index = extract_floor_index(pm["element_attributes"]["tag"])
     target_elevation = elevations_from_bottom[floor_index]
     if floor_index == 0 and len(elevations_from_bottom) == 1:
         floor_height = target_elevation
@@ -30,7 +30,7 @@ def extract_floor_index(tag: str) -> int:
         "FB0.2" -> 0
         "SJF1.0-7" -> 1
     """
-    pattern = re.compile(r'[A-Z]+([0-9]+).[0-9]+[\-0-9]*')
+    pattern = re.compile(r"[A-Z]+([0-9]+).[0-9]+[\-0-9]*")
     result = pattern.match(tag)
     floor_index = int(result.groups()[0])
     return floor_index

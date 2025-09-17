@@ -34,7 +34,6 @@ class ConcentricColumn(BaseModel):
     def dump_dict(self):
         return self.model_dump(mode="json")
 
-
     def add_point_load(
         self,
         magnitude: float,
@@ -53,8 +52,6 @@ class ConcentricColumn(BaseModel):
         }
         self.point_loads.append(point_load)
 
-
-
     def get_reactions(self) -> float:
         """
         Returns a float representing the total sum of loads for the
@@ -64,11 +61,11 @@ class ConcentricColumn(BaseModel):
         if self.point_loads is None:
             return acc
         for p in self.point_loads:
-            dir = p['direction']
+            dir = p["direction"]
             acc.setdefault(dir, {})
-            case = p['case']
+            case = p["case"]
             acc[dir].setdefault(case, [])
-            acc[dir][case].append(p['magnitude'])
+            acc[dir][case].append(p["magnitude"])
 
         for dir, cases in acc.items():
             for case, forces in cases.items():
@@ -77,18 +74,16 @@ class ConcentricColumn(BaseModel):
                     acc[dir][case] = -acc[dir][case]
         return acc
 
-    
-
     @classmethod
     def from_point_loads(cls, point_loads: dict[str, dict[str, str | float]]):
-        """
-        
-        """
+        """ """
         reaction_components = {}
         for load_case in point_loads.items():
             reaction_components.setdefault(load_case, {})
             for load_dir, pt_loads in load_case.items():
                 reaction_components[load_case].setdefault(load_dir, [])
                 for point_load in pt_loads:
-                    reaction_components[load_dir][load_case].append(point_load['magnitude'])
+                    reaction_components[load_dir][load_case].append(
+                        point_load["magnitude"]
+                    )
         return cls(reaction_components)

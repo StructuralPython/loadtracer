@@ -7,8 +7,7 @@ authors = [
 ]
 requires-python = ">=3.12"
 dependencies = [
-    "papermodels==0.11.6",
-    "pygraphviz>=1.14",
+    "papermodels[graphviz]>=0.12.0",
     "loadbearing_wall>=0.2.0",
     "PyniteFEA==1.1.2",
     "safer>=5.1.0",
