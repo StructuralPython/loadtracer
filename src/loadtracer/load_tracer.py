@@ -62,7 +62,7 @@ class LoadTracer(BaseModel, arbitrary_types_allowed=True):
         for member_name in node_iterator:
             papermodel = loaded_elements[member_name].model()
             tag = papermodel["element_attributes"]["tag"]
-            print(f"{tag=}")
+            # print(f"{tag=}")
             papermodel = expand_occupancy_loads(
                 papermodel,
                 self.occupancies,
@@ -84,11 +84,11 @@ class LoadTracer(BaseModel, arbitrary_types_allowed=True):
                 papermodel["element_geometry"]["height"] = element_height
 
             if orientation == "vertical" and tag[0] == "W":
-                print(f"{tag=}")
+                # print(f"{tag=}")
                 # if orientation == 'vertical' and reaction_type == "linear":
                 member_model = LoadbearingWall(papermodel)
-                if tag == "WT3.0":
-                    print(f"{member_model=}")
+                # if tag == "WT3.0":
+                #     print(f"{member_model=}")
             elif orientation == "vertical":
                 # elif orientation == 'vertical' and reaction_type == "point":
                 member_model = PointColumn(papermodel)

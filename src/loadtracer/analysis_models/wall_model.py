@@ -19,7 +19,7 @@ class LoadbearingWall(AbstractAnalysisModel):
 
     def get_reactions(self):
         reactions = self.model.get_reactions()
-        print(f"{reactions.keys()=}")
+        # print(f"{reactions.keys()=}")
         return {0: reactions}
 
     def dump_model(
@@ -82,7 +82,7 @@ def build_linear_wall_model(pm: dict, spread_angle: float) -> LinearWallModel:
     length = pm["element_attributes"]["length"]
     for dist_load in pm["loads"]["distributed_loads"]:
         for dt in dist_load["expanded"]:
-            print(f"{dt['end_loc']=}")
+            # print(f"{dt['end_loc']=}")
             end_loc = dt["end_loc"]
             if length < end_loc:
                 if math.isclose(length, end_loc, rel_tol=1e-3):

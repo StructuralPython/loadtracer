@@ -182,6 +182,8 @@ def expand_point_reactions(
         analysis_dirs = point_direction_mapping[model_direction]
         for analysis_dir in analysis_dirs:
             load_cases = loads_by_dir.get(analysis_dir, None)
+            # if load_cases is None:
+            #     print(f"{loads_by_dir=} | {member_reactions.get(transfer_source, None)=}")
             assert load_cases is not None
             # Typical condition from a frame member
             for case_name, magnitude in load_cases.items():
@@ -258,9 +260,9 @@ def expand_distributed_reactions(
     """
     # print(f"{transfer_source=} | {member_reactions.keys()=} | {member_reactions.get(transfer_source)=}")
     transfer_reactions = member_reactions.get(transfer_source, None)
-    if transfer_source == "WT4.0":
-        print(transfer_source)
-        # print(f"{member_reactions.get(transfer_source)=}")
+    # if transfer_source == "WT4.0":
+    #     print(transfer_source)
+    # print(f"{member_reactions.get(transfer_source)=}")
 
     assert transfer_reactions is not None
     acc = {}
@@ -275,7 +277,7 @@ def expand_distributed_reactions(
             if load_cases is None:
                 load_cases = loads_by_dir.get(analysis_dir.title(), None)
             # if transfer_source=="WT4.0":
-            print(f"{load_cases=}")
+            # print(f"{load_cases=}")
             # Original
             # load_cases = loads_by_dir.get(analysis_dir, None)
             # print(f"{analysis_dir=} | {loads_by_dir=}")
@@ -306,8 +308,8 @@ def expand_distributed_reactions(
                         }
                         acc[index].append(new_dist_load)
             elif isinstance(load_cases, list):
-                if transfer_source == "J4.0":
-                    print("CLAUSE 2")
+                # if transfer_source == "J4.0":
+                #     print("CLAUSE 2")
                 # When the member is a loadbearing_wall and has a list of reactions
                 for case_dist_load in load_cases:
                     new_dist_load = copy(case_dist_load)
@@ -315,6 +317,6 @@ def expand_distributed_reactions(
                     # Need to update direction with analysis dir
                     new_dist_load.update({"dir": analysis_dir})
                     acc[index].append(new_dist_load)
-    if transfer_source == "J4.0":
-        print(f"{acc=}")
+    # if transfer_source == "J4.0":
+    #     print(f"{acc=}")
     return acc

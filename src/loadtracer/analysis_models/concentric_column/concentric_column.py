@@ -72,7 +72,7 @@ class ConcentricColumn(BaseModel):
                 acc[dir][case] = sum(forces)
                 if self.reverse_reaction_sign:
                     acc[dir][case] = -acc[dir][case]
-        return acc
+        return {0: acc}
 
     @classmethod
     def from_point_loads(cls, point_loads: dict[str, dict[str, str | float]]):
