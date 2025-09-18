@@ -11,7 +11,7 @@ from rich import print
 import jsonchain
 from .analysis_models.column_model import PointColumn
 from .analysis_models.frame_model import PyniteFrame
-from .analysis_models.wall_model import LoadbearingWall
+from .analysis_models.wall_model import LoadbearingWall, convert_point_arrays_into_dist_loads, filter_non_point_arrays
 from .expand_occupancies import expand_occupancy_loads
 from .expand_reactions import expand_reaction_loads
 from .pm_processing import get_element_height
@@ -71,39 +71,39 @@ class LoadTracer(BaseModel, arbitrary_types_allowed=True):
         for member_name in node_iterator:
             papermodel = loaded_elements[member_name].model()
             tag = papermodel["element_attributes"]["tag"]
-            if tag == "WT3.0":
-                print(papermodel)
-            papermodel = expand_occupancy_loads(
+            expanded_papermodel = expand_occupancy_loads(
                 papermodel,
                 self.occupancies,
                 self.occupancy_distributed_load_direction_mapping,
             )
-            papermodel = expand_reaction_loads(
-                papermodel,
+            expanded_papermodel = expand_reaction_loads(
+                expanded_papermodel,
                 self._reactions,
                 self.reaction_distributed_load_direction_mapping,
                 self.reaction_point_load_direction_mapping,
             )
-            self._expanded_pm[member_name] = papermodel
-            orientation = papermodel["element_attributes"]["orientation"]
+            self._expanded_pm[member_name] = expanded_papermodel
+            orientation = expanded_papermodel["element_attributes"]["orientation"]
             # reaction_type = papermodel['element_attributes']['reaction_type']
-            tag = papermodel["element_attributes"]["tag"]
+            tag = expanded_papermodel["element_attributes"]["tag"]
             if orientation == "vertical":
-                element_height = get_element_height(papermodel, self.elevations)
-                papermodel["element_attributes"]["height"] = element_height
-                papermodel["element_geometry"]["height"] = element_height
+                element_height = get_element_height(expanded_papermodel, self.elevations)
+                expanded_papermodel["element_attributes"]["height"] = element_height
+                expanded_papermodel["element_geometry"]["height"] = element_height
 
             if orientation == "vertical" and tag[0] == "W":
-                # print(f"{tag=}")
-                # if orientation == 'vertical' and reaction_type == "linear":
-                member_model = LoadbearingWall(papermodel)
-                # if tag == "WT3.0":
-                #     print(f"{member_model=}")
+                distributed_loads = convert_point_arrays_into_dist_loads(expanded_papermodel['loads']['point_loads'])
+                non_arrays = filter_non_point_arrays(expanded_papermodel['loads']['point_loads'])
+
+                expanded_papermodel['loads']['point_loads'] = non_arrays
+                expanded_papermodel['loads']['distributed_loads'].extend(distributed_loads)
+
+                member_model = LoadbearingWall(expanded_papermodel)
             elif orientation == "vertical":
                 # elif orientation == 'vertical' and reaction_type == "point":
-                member_model = PointColumn(papermodel)
+                member_model = PointColumn(expanded_papermodel)
             elif orientation == "horizontal":
-                member_model = PyniteFrame(papermodel)
+                member_model = PyniteFrame(expanded_papermodel)
             reactions = member_model.get_reactions()
 
             model_dict = member_model.dump_model()

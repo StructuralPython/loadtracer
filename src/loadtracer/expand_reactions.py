@@ -1,4 +1,4 @@
- * dist_load['start_magnitude']from typing import Optional, Union, Any
+from typing import Optional, Union, Any
 from copy import deepcopy, copy
 import jsonchain
 
@@ -97,7 +97,6 @@ def expand_reaction_loads(
         new_point_load["expanded"] += transfer_reactions
         new_point_loads.append(new_point_load)
     tag = member_model['element_attributes']['tag']
-    print(f"{tag=}")
     # DISTRIBUTED LOADS
     new_model["loads"]["distributed_loads"] = []
     new_dist_loads = new_model["loads"]["distributed_loads"]
@@ -183,8 +182,6 @@ def expand_point_reactions(
         analysis_dirs = point_direction_mapping[model_direction]
         for analysis_dir in analysis_dirs:
             load_cases = loads_by_dir.get(analysis_dir, None)
-            # if load_cases is None:
-            #     print(f"{loads_by_dir=} | {member_reactions.get(transfer_source, None)=}")
             assert load_cases is not None
             # Typical condition from a frame member
             for case_name, magnitude in load_cases.items():
@@ -259,12 +256,7 @@ def expand_distributed_reactions(
         ...
     }
     """
-    # print(f"{transfer_source=} | {member_reactions.keys()=} | {member_reactions.get(transfer_source)=}")
     transfer_reactions = member_reactions.get(transfer_source, None)
-    # if transfer_source == "WT4.0":
-    #     print(transfer_source)
-    # print(f"{member_reactions.get(transfer_source)=}")
-
     assert transfer_reactions is not None
     acc = {}
     for index, node_id in enumerate(transfer_reactions):
@@ -277,11 +269,6 @@ def expand_distributed_reactions(
             load_cases = loads_by_dir.get(analysis_dir, None)
             if load_cases is None:
                 load_cases = loads_by_dir.get(analysis_dir.title(), None)
-            # if transfer_source=="WT4.0":
-            # print(f"{load_cases=}")
-            # Original
-            # load_cases = loads_by_dir.get(analysis_dir, None)
-            # print(f"{analysis_dir=} | {loads_by_dir=}")
             if load_cases is None:
                 raise ValueError(
                     "The reactions are not coming in the correct format:\n"
@@ -313,8 +300,6 @@ def expand_distributed_reactions(
                         }
                         acc[index].append(new_dist_load)
             elif isinstance(load_cases, list):
-                # if transfer_source == "J4.0":
-                #     print("CLAUSE 2")
                 # When the member is a loadbearing_wall and has a list of reactions
                 for case_dist_load in load_cases:
                     new_dist_load = copy(case_dist_load)
@@ -322,6 +307,4 @@ def expand_distributed_reactions(
                     # Need to update direction with analysis dir
                     new_dist_load.update({"dir": analysis_dir})
                     acc[index].append(new_dist_load)
-    # if transfer_source == "J4.0":
-    #     print(f"{acc=}")
     return acc

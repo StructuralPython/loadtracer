@@ -19,7 +19,6 @@ class LoadbearingWall(AbstractAnalysisModel):
 
     def get_reactions(self):
         reactions = self.model.get_reactions()
-        # print(f"{reactions.keys()=}")
         return {0: reactions}
 
     def dump_model(
@@ -82,7 +81,6 @@ def build_linear_wall_model(pm: dict, spread_angle: float) -> LinearWallModel:
     length = pm["element_attributes"]["length"]
     for dist_load in pm["loads"]["distributed_loads"]:
         for dt in dist_load["expanded"]:
-            # print(f"{dt['end_loc']=}")
             end_loc = dt["end_loc"]
             if length < end_loc:
                 if math.isclose(length, end_loc, rel_tol=1e-3):
@@ -140,15 +138,27 @@ def convert_point_arrays_into_dist_loads(
             else:
                 start_loc = prev_end_loc
                 end_loc = prev_end_loc + prev_interval / 2 + interval / 2
-                
+
             prev_end_loc = end_loc
+            start_loc = round(start_loc, 3)
+            end_loc = round(end_loc, 3)
             distance = end_loc - start_loc
             prev_interval = interval
 
-            try: 
-                magnitude = 1 / distance
-            except ZeroDivisionError:
-                magnitude = 0
+            magnitude_factor = 1 / distance
+
+            expanded_dists = []
+            for expanded_point in point_load['expanded']:
+                expanded_dist = {
+                    "start_magnitude": magnitude_factor * expanded_point['magnitude'],
+                    "end_magnitude": magnitude_factor * expanded_point['magnitude'],
+                    "start_loc": start_loc,
+                    "end_loc": end_loc,
+                    "case": expanded_point['case'],
+                    "dir": expanded_point['dir']
+                }
+                expanded_dists.append(expanded_dist)
+                
             dist_load = {
                 "transfer_source": point_load['transfer_source'],
                 "transfer_source_start_extent": [],
@@ -157,10 +167,11 @@ def convert_point_arrays_into_dist_loads(
                 "load_components": {},
                 "applied_area": 0.0,
                 "start_loc": start_loc,
-                "start_magnitude":  magnitude,
+                "start_magnitude":  magnitude_factor,
                 "end_loc": end_loc,
-                "end_magnitude": magnitude,
-                "direction": point_load['direction']
+                "end_magnitude": magnitude_factor,
+                "direction": point_load['direction'],
+                "expanded": expanded_dists,
             }
 
             dist_loads.append(dist_load)
@@ -208,6 +219,17 @@ def get_point_intervals_by_parent(
             prev_loc = loc
     return intervals
 
+
+def filter_non_point_arrays(point_loads: list[dict]) -> dict[str, list[dict]]:
+    """
+    REturns a dict of non-array point laods
+    """
+    nons = []
+    for point_load in point_loads:
+        transfer_source = point_load['transfer_source']
+        if not "-" in transfer_source:
+            nons.append(point_load)
+    return nons
 
     # intervals = {}
     # prev_loc = None
