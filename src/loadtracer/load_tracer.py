@@ -56,13 +56,23 @@ class LoadTracer(BaseModel, arbitrary_types_allowed=True):
         self._expanded_pm = {}
         sorted_nodes = nx.topological_sort(self.geometry_graph)
         loaded_elements = self.geometry_graph.create_loaded_elements()
-        node_iterator = sorted_nodes
+        # Include subelements in the sorted nodes
+        expanded_sorted_nodes = []
+        for node_name in sorted_nodes:
+            element = self.geometry_graph.nodes[node_name]['element']
+            if element.subelements is not None:
+                inner_acc = [subelem.tag for subelem in element.subelements]
+                expanded_sorted_nodes.extend(inner_acc)
+            else:
+                expanded_sorted_nodes.append(element.tag)
+        node_iterator = expanded_sorted_nodes
         if progress:
             node_iterator = track(list(sorted_nodes))
         for member_name in node_iterator:
             papermodel = loaded_elements[member_name].model()
             tag = papermodel["element_attributes"]["tag"]
-            # print(f"{tag=}")
+            if tag == "WT3.0":
+                print(papermodel)
             papermodel = expand_occupancy_loads(
                 papermodel,
                 self.occupancies,

@@ -104,3 +104,124 @@ def build_linear_wall_model(pm: dict, spread_angle: float) -> LinearWallModel:
                 dir="Fy",
             )
     return wall_model
+
+
+def convert_point_arrays_into_dist_loads(
+    point_loads: list[dict],
+) -> list[dict]:
+    """
+    Converts a list of point loads from the papermodel, turning them
+    into a series of distributed loads spaced according to the joist
+    interval. 
+
+    This function only looks at point loads as part of point arrays
+    assigned to the papermodel. Any isolated point loads applied to
+    the wall are unconverted.
+    """
+    point_loads_by_parent = filter_point_arrays(point_loads)
+    intervals = get_point_intervals_by_parent(point_loads_by_parent)
+    dist_loads = []
+    for parent, intervals in intervals.items():
+        num_loads = len(point_loads_by_parent[parent])
+        for idx, point_load in enumerate(point_loads_by_parent[parent]):
+            if idx == num_loads - 1:
+                interval = 0
+            else:
+                interval = intervals[idx]
+            if idx == 0:
+                start_loc = point_load['location']
+                end_loc = start_loc + interval / 2
+            # elif idx == 1:
+            #     start_loc = prev_end_loc
+            #     end_loc = prev_interval / 2 + interval / 2
+            elif idx == num_loads - 1:
+                start_loc = prev_end_loc
+                end_loc = prev_end_loc + prev_interval / 2 + interval / 2
+            else:
+                start_loc = prev_end_loc
+                end_loc = prev_end_loc + prev_interval / 2 + interval / 2
+                
+            prev_end_loc = end_loc
+            distance = end_loc - start_loc
+            prev_interval = interval
+
+            try: 
+                magnitude = 1 / distance
+            except ZeroDivisionError:
+                magnitude = 0
+            dist_load = {
+                "transfer_source": point_load['transfer_source'],
+                "transfer_source_start_extent": [],
+                "transfer_source_end_extent": [],
+                "occupancy": "",
+                "load_components": {},
+                "applied_area": 0.0,
+                "start_loc": start_loc,
+                "start_magnitude":  magnitude,
+                "end_loc": end_loc,
+                "end_magnitude": magnitude,
+                "direction": point_load['direction']
+            }
+
+            dist_loads.append(dist_load)
+    return dist_loads
+            
+
+def filter_point_arrays(point_loads: list[dict]) -> dict[str, list[dict]]:
+    """
+    Returns a dictionary of point loads keyed by transfer source parent
+    with the values sorted by location.
+    """
+    point_loads_by_parent = {}
+    for point_load in point_loads:
+        transfer_source = point_load['transfer_source']
+        if not "-" in transfer_source:
+            continue
+        parent = point_load['transfer_source'].split("-")[0]
+        point_loads_by_parent.setdefault(parent, [])
+        point_loads_by_parent[parent].append(point_load)
+
+    for parent, point_loads in point_loads_by_parent.items():
+        point_loads_by_parent[parent] = sorted(point_loads, key=lambda x: x['location'])
+    return point_loads_by_parent
+
+
+def get_point_intervals_by_parent(
+    point_loads_by_parent: dict[str, list[dict]]
+) -> dict[str, list[float]]:
+    """
+    Returns a dictionary with keys representing the 
+    transfer source parent and the values representing
+    the interval size between each point load in the 
+    array.
+    """
+    intervals = {}
+    for parent, point_loads in point_loads_by_parent.items():
+        intervals.setdefault(parent, [])
+        for idx, point_load in enumerate(point_loads):
+            loc = point_load['location']
+            if idx == 0:
+                prev_loc = loc
+                continue
+            interval = abs(loc - prev_loc)
+            intervals[parent].append(interval)
+            prev_loc = loc
+    return intervals
+
+
+    # intervals = {}
+    # prev_loc = None
+    # prev_parent = None
+    # for point_load in point_loads:
+    #     transfer_source = point_load['transfer_source']
+    #     if not "-" in transfer_source:
+    #         continue
+    #     if parent == prev_parent:
+    #     parent = point_load['transfer_source'].split("-")[0]
+    
+    #     loc = point_load['location']
+    #     intervals.setdefault(parent, [])
+    #     interval = abs(loc - prev_loc)
+    #     intervals[parent].append(point_load)
+
+    #     prev_parent = parent
