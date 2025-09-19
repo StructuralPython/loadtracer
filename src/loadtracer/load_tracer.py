@@ -55,8 +55,8 @@ class LoadTracer(BaseModel, arbitrary_types_allowed=True):
         entire geometry graph can be expressed as completely resolved
         analysis models.
         """
-        self._models = {}
-        self._reactions = {}
+        self.models = {}
+        self.reactions = {}
         self._expanded_pm = {}
         sorted_nodes = nx.topological_sort(self.geometry_graph)
         loaded_elements = self.geometry_graph.create_loaded_elements()
@@ -84,7 +84,7 @@ class LoadTracer(BaseModel, arbitrary_types_allowed=True):
             )
             expanded_papermodel = expand_reaction_loads(
                 expanded_papermodel,
-                self._reactions,
+                self.reactions,
                 self.reaction_distributed_load_direction_mapping,
                 self.reaction_point_load_direction_mapping,
             )
@@ -126,12 +126,12 @@ class LoadTracer(BaseModel, arbitrary_types_allowed=True):
             reactions = member_model.get_reactions()
 
             model_dict = member_model.dump_model()
-            self._models.update({member_name: model_dict})
-            self._reactions.update({member_name: reactions})
+            self.models.update({member_name: model_dict})
+            self.reactions.update({member_name: reactions})
 
         if artifacts_dir:
             artifacts_path = pathlib.Path(artifacts_dir)
-            jsonchain.dump_json(self._models, artifacts_path / "models.json")
+            jsonchain.dump_json(self.models, artifacts_path / "models.json")
             jsonchain.dump_json(
-                self._reactions, artifacts_path / "reaction_forces.json"
+                self.reactions, artifacts_path / "reaction_forces.json"
             )
