@@ -96,7 +96,7 @@ def expand_reaction_loads(
         new_point_load.setdefault("expanded", [])
         new_point_load["expanded"] += transfer_reactions
         new_point_loads.append(new_point_load)
-    tag = member_model['element_attributes']['tag']
+    tag = member_model["element_attributes"]["tag"]
     # DISTRIBUTED LOADS
     new_model["loads"]["distributed_loads"] = []
     new_dist_loads = new_model["loads"]["distributed_loads"]
@@ -273,15 +273,17 @@ def expand_distributed_reactions(
                 raise ValueError(
                     "The reactions are not coming in the correct format:\n"
                     f"{transfer_reactions=}"
-                    )
+                )
             if isinstance(load_cases, dict):
                 for case_name, load in load_cases.items():
                     if isinstance(load, list):
                         # Load from a wall
                         for subload in load:
                             new_dist_load = {
-                                "start_magnitude": subload["start_magnitude"] * dist_load['start_magnitude'],
-                                "end_magnitude": subload["end_magnitude"] * dist_load['end_magnitude'],
+                                "start_magnitude": subload["start_magnitude"]
+                                * dist_load["start_magnitude"],
+                                "end_magnitude": subload["end_magnitude"]
+                                * dist_load["end_magnitude"],
                                 "start_loc": dist_load["start_loc"],
                                 "end_loc": dist_load["end_loc"],
                                 "case": case_name,
@@ -291,8 +293,8 @@ def expand_distributed_reactions(
                     else:
                         # Load from a frame member
                         new_dist_load = {
-                            "start_magnitude": load * dist_load['start_magnitude'],
-                            "end_magnitude": load * dist_load['end_magnitude'],
+                            "start_magnitude": load * dist_load["start_magnitude"],
+                            "end_magnitude": load * dist_load["end_magnitude"],
                             "start_loc": dist_load["start_loc"],
                             "end_loc": dist_load["end_loc"],
                             "case": case_name,

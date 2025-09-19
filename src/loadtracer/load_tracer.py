@@ -11,7 +11,11 @@ from rich import print
 import jsonchain
 from .analysis_models.column_model import PointColumn
 from .analysis_models.frame_model import PyniteFrame
-from .analysis_models.wall_model import LoadbearingWall, convert_point_arrays_into_dist_loads, filter_non_point_arrays
+from .analysis_models.wall_model import (
+    LoadbearingWall,
+    convert_point_arrays_into_dist_loads,
+    filter_non_point_arrays,
+)
 from .expand_occupancies import expand_occupancy_loads
 from .expand_reactions import expand_reaction_loads
 from .pm_processing import get_element_height
@@ -59,7 +63,7 @@ class LoadTracer(BaseModel, arbitrary_types_allowed=True):
         # Include subelements in the sorted nodes
         expanded_sorted_nodes = []
         for node_name in sorted_nodes:
-            element = self.geometry_graph.nodes[node_name]['element']
+            element = self.geometry_graph.nodes[node_name]["element"]
             if element.subelements is not None:
                 inner_acc = [subelem.tag for subelem in element.subelements]
                 expanded_sorted_nodes.extend(inner_acc)
@@ -70,11 +74,13 @@ class LoadTracer(BaseModel, arbitrary_types_allowed=True):
             node_iterator = track(list(sorted_nodes))
         for member_name in node_iterator:
             papermodel = loaded_elements[member_name].model()
-            tag = papermodel["element_attributes"]["tag"]
+            element_attributes = papermodel["element_attributes"]
+            tag = element_attributes["tag"]
             expanded_papermodel = expand_occupancy_loads(
                 papermodel,
                 self.occupancies,
                 self.occupancy_distributed_load_direction_mapping,
+                reaction_type=element_attributes["reaction_type"],
             )
             expanded_papermodel = expand_reaction_loads(
                 expanded_papermodel,
@@ -87,20 +93,33 @@ class LoadTracer(BaseModel, arbitrary_types_allowed=True):
             # reaction_type = papermodel['element_attributes']['reaction_type']
             tag = expanded_papermodel["element_attributes"]["tag"]
             if orientation == "vertical":
-                element_height = get_element_height(expanded_papermodel, self.elevations)
+                element_height = get_element_height(
+                    expanded_papermodel, self.elevations
+                )
                 expanded_papermodel["element_attributes"]["height"] = element_height
                 expanded_papermodel["element_geometry"]["height"] = element_height
 
-            if orientation == "vertical" and tag[0] == "W":
-                distributed_loads = convert_point_arrays_into_dist_loads(expanded_papermodel['loads']['point_loads'])
-                non_arrays = filter_non_point_arrays(expanded_papermodel['loads']['point_loads'])
+            if (
+                orientation == "vertical"
+                and element_attributes["reaction_type"] == "linear"
+            ):
+                distributed_loads = convert_point_arrays_into_dist_loads(
+                    expanded_papermodel["loads"]["point_loads"]
+                )
+                non_arrays = filter_non_point_arrays(
+                    expanded_papermodel["loads"]["point_loads"]
+                )
 
-                expanded_papermodel['loads']['point_loads'] = non_arrays
-                expanded_papermodel['loads']['distributed_loads'].extend(distributed_loads)
+                expanded_papermodel["loads"]["point_loads"] = non_arrays
+                expanded_papermodel["loads"]["distributed_loads"].extend(
+                    distributed_loads
+                )
 
                 member_model = LoadbearingWall(expanded_papermodel)
-            elif orientation == "vertical":
-                # elif orientation == 'vertical' and reaction_type == "point":
+            elif (
+                orientation == "vertical"
+                and element_attributes["reaction_type"] == "point"
+            ):
                 member_model = PointColumn(expanded_papermodel)
             elif orientation == "horizontal":
                 member_model = PyniteFrame(expanded_papermodel)

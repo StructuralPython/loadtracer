@@ -463,7 +463,7 @@ dev = [
 requires-dist = [
     { name = "jsonchain", specifier = ">=0.5.0" },
     { name = "loadbearing-wall", specifier = ">=0.2.0" },
-    { name = "papermodels", extras = ["graphviz"], specifier = "==0.12.1" },
+    { name = "papermodels", extras = ["graphviz"], specifier = ">=0.14.0" },
     { name = "pynite-tools", specifier = ">=0.6.5" },
     { name = "pynitefea", specifier = "==1.1.2" },
     { name = "safer", specifier = ">=5.1.0" },
@@ -712,7 +712,7 @@ wheels = [
 
 [[package]]
 name = "papermodels"
-version = "0.12.1"
+version = "0.14.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "colour" },
@@ -733,9 +733,9 @@ dependencies = [
     { name = "textalloc" },
     { name = "tomli-w" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e5/91/5a490694076ecc0796ef1b04fe3a4470d38eb60eb3e81fe9aa04c04f6003/papermodels-0.12.1.tar.gz", hash = "sha256:da3a8fec481bfc357e0bd9679fc00b91cd75f05b7f48accfecb997779180de5b", size = 51942 }
+sdist = { url = "https://files.pythonhosted.org/packages/a2/bb/817b9a25071ea498066853e02a8f84d903e982c8c59f680636f53ad99166/papermodels-0.14.0.tar.gz", hash = "sha256:f34d802a595e698ee6491e47811a0f48a64055eb060ce842e4eef83e498f9717", size = 51980 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/eb/6a/59dc198919766711692614a741943936c06fbc52bbf6b1f4e4aa9e65adf9/papermodels-0.12.1-py2.py3-none-any.whl", hash = "sha256:414f282320c8aec42f602fadab51913a32ec7a9de06d0e00684b03042e2cc1ac", size = 57561 },
+    { url = "https://files.pythonhosted.org/packages/a0/c7/2a7a0034e419e83a8fe7509b2f1ea89f7cad45d644569300553736c9bf90/papermodels-0.14.0-py2.py3-none-any.whl", hash = "sha256:6cc03307285008fb0e148bf016bd483483327718f77bfb4574cded0b29b7bd6f", size = 57602 },
 ]
 
 [package.optional-dependencies]
