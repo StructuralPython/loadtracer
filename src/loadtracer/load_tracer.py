@@ -37,8 +37,8 @@ class LoadTracer(BaseModel, arbitrary_types_allowed=True):
         default={"gravity": ["FY"], "inplane": ["FX"], "out_of_plane": ["FZ"]}
     )
     show_progress: bool = True
-    _models: Optional[dict] = None
-    _reactions: Optional[dict] = None
+    models: Optional[dict] = None
+    reactions: Optional[dict] = None
     _expanded_pm: Optional[dict] = None
 
     def generate_rundown(self, artifacts_dir: Optional[str | pathlib.Path] = None):
