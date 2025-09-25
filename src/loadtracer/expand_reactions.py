@@ -186,7 +186,7 @@ def expand_point_reactions(
             # Typical condition from a frame member
             for case_name, magnitude in load_cases.items():
                 new_point_load = {
-                    "magnitude": magnitude,
+                    "magnitude": -1 * magnitude,
                     "location": point_load["location"],
                     "case": case_name,
                     "dir": analysis_dir,
@@ -280,9 +280,9 @@ def expand_distributed_reactions(
                         # Load from a wall
                         for subload in load:
                             new_dist_load = {
-                                "start_magnitude": subload["start_magnitude"]
+                                "start_magnitude": -subload["start_magnitude"]
                                 * dist_load["start_magnitude"],
-                                "end_magnitude": subload["end_magnitude"]
+                                "end_magnitude": -subload["end_magnitude"]
                                 * dist_load["end_magnitude"],
                                 "start_loc": dist_load["start_loc"],
                                 "end_loc": dist_load["end_loc"],
@@ -293,8 +293,8 @@ def expand_distributed_reactions(
                     else:
                         # Load from a frame member
                         new_dist_load = {
-                            "start_magnitude": load * dist_load["start_magnitude"],
-                            "end_magnitude": load * dist_load["end_magnitude"],
+                            "start_magnitude": -1 * load * dist_load["start_magnitude"],
+                            "end_magnitude": -1 * load * dist_load["end_magnitude"],
                             "start_loc": dist_load["start_loc"],
                             "end_loc": dist_load["end_loc"],
                             "case": case_name,

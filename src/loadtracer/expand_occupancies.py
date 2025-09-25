@@ -70,15 +70,24 @@ def expand_occupancy_loads(
         occupancy = dist_load["occupancy"]
         model_dir = dist_load.get("direction", "gravity")
         analysis_dirs = distributed_direction_mapping[model_dir]
+        tag = new_model['element_attributes']['tag']
+        # print(tag)
         for analysis_dir in analysis_dirs:
             if occupancy and occupancy in occupancies:
-                expanded_load = expand_distributed_load(
-                    dist_load,
-                    occupancies[occupancy],
-                    analysis_dir,
-                    member_model["element_attributes"]["length"],
-                    reaction_type,
-                )
+                debug = False
+                # if tag == "RJ0.2-0":
+                #     debug=True
+                try:
+                    expanded_load = expand_distributed_load(
+                        dist_load,
+                        occupancies[occupancy],
+                        analysis_dir,
+                        member_model["element_attributes"]["length"],
+                        reaction_type,
+                        debug=debug
+                    )
+                except:
+                    print(new_model['element_attributes']['tag'])
                 new_dist_loads.append(expanded_load)
 
             elif occupancy and occupancy not in occupancies:
@@ -98,6 +107,7 @@ def expand_distributed_load(
     analysis_dir: str,
     length: float,
     reaction_type: str,
+    debug: bool = False
 ) -> dict:
     """
     Returns a dict representing the expanded load of 'dist_load' according
@@ -112,7 +122,7 @@ def expand_distributed_load(
         # because their trib area reflects the total area covered by the joist region.
         # It needs to be reduced to a unit width which is what the applied_area
         # represents on array collector elements.
-        applied_area = applied_area / length * 1
+        applied_area = length
 
     for load_case, load_value in occupancy.items():
         total_area_ratio  = dist_load["total_area_ratio"]
@@ -122,6 +132,8 @@ def expand_distributed_load(
         # It is kept because it is convenient to review the actual "applied area" of
         # the load on a member for personal validation.
         load_constant = load_value * applied_area / total_area_ratio
+        if debug:
+            print(f"{load_value=} | {new_dist_load["applied_area"]=} | {length=} | {applied_area=} | {total_area_ratio=} | {load_constant=} | {dist_load["start_magnitude"]=} | {dist_load["start_magnitude"] * load_constant=}")
         expanded = {
             "start_magnitude": dist_load["start_magnitude"] * load_constant,
             "end_magnitude": dist_load["end_magnitude"] * load_constant,
