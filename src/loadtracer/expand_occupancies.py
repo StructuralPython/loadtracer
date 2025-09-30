@@ -70,13 +70,11 @@ def expand_occupancy_loads(
         occupancy = dist_load["occupancy"]
         model_dir = dist_load.get("direction", "gravity")
         analysis_dirs = distributed_direction_mapping[model_dir]
-        tag = new_model['element_attributes']['tag']
+        tag = new_model["element_attributes"]["tag"]
         # print(tag)
         for analysis_dir in analysis_dirs:
             if occupancy and occupancy in occupancies:
-                debug = False
-                # if tag == "RJ0.2-0":
-                #     debug=True
+                debug = True
                 try:
                     expanded_load = expand_distributed_load(
                         dist_load,
@@ -84,10 +82,11 @@ def expand_occupancy_loads(
                         analysis_dir,
                         member_model["element_attributes"]["length"],
                         reaction_type,
-                        debug=debug
+                        debug=debug,
                     )
-                except:
-                    print(new_model['element_attributes']['tag'])
+                except Exception as e:
+                    print(new_model["element_attributes"]["tag"])
+                    raise e
                 new_dist_loads.append(expanded_load)
 
             elif occupancy and occupancy not in occupancies:
@@ -107,7 +106,7 @@ def expand_distributed_load(
     analysis_dir: str,
     length: float,
     reaction_type: str,
-    debug: bool = False
+    debug: bool = False,
 ) -> dict:
     """
     Returns a dict representing the expanded load of 'dist_load' according
@@ -116,6 +115,12 @@ def expand_distributed_load(
     new_dist_load = deepcopy(dist_load)
     new_dist_load.setdefault("expanded", [])
     applied_area = new_dist_load["applied_area"]
+    area_ratio = dist_load["applied_area_ratio"]
+    # The total area ratio is required because the dist_load start/end magnitudes
+    # already take this ratio into account and we need to undo its affect when
+    # we scale up the dist load magnitude to the applied area load.
+    # It is kept because it is convenient to review the actual "applied area" of
+    # the load on a member for personal validation.
     if reaction_type == "linear":
         # divide by length to get width of equivalent rectangle * unit_width
         # THis only needs to be done with collector elements with linear reactions
@@ -123,20 +128,20 @@ def expand_distributed_load(
         # It needs to be reduced to a unit width which is what the applied_area
         # represents on array collector elements.
         applied_area = length
+    load_constant = applied_area * area_ratio
 
     for load_case, load_value in occupancy.items():
-        total_area_ratio  = dist_load["total_area_ratio"]
-        # The total area ratio is required because the dist_load start/end magnitudes
-        # already take this ratio into account and we need to undo its affect when
-        # we scale up the dist load magnitude to the applied area load.
-        # It is kept because it is convenient to review the actual "applied area" of
-        # the load on a member for personal validation.
-        load_constant = load_value * applied_area / total_area_ratio
+        # load_constant = load_value * applied_area / total_area_ratio
+        load_factor = (
+            load_value * load_constant
+        )  # This gives the correct value for CollectorTribModel with a single extent with partial loads when the total_area_ratio reflects te
         if debug:
-            print(f"{load_value=} | {new_dist_load["applied_area"]=} | {length=} | {applied_area=} | {total_area_ratio=} | {load_constant=} | {dist_load["start_magnitude"]=} | {dist_load["start_magnitude"] * load_constant=}")
+            print(
+                f"{load_case=} | {load_value=} | {applied_area=}| {area_ratio=} | {load_constant=} | {dist_load["start_magnitude"]=} | {dist_load["start_magnitude"] * load_constant=}"
+            )
         expanded = {
-            "start_magnitude": dist_load["start_magnitude"] * load_constant,
-            "end_magnitude": dist_load["end_magnitude"] * load_constant,
+            "start_magnitude": dist_load["start_magnitude"] * load_factor,
+            "end_magnitude": dist_load["end_magnitude"] * load_factor,
             "start_loc": dist_load["start_loc"],
             "end_loc": dist_load["end_loc"],
             "case": load_case,

@@ -132,6 +132,4 @@ class LoadTracer(BaseModel, arbitrary_types_allowed=True):
         if artifacts_dir:
             artifacts_path = pathlib.Path(artifacts_dir)
             jsonchain.dump_json(self.models, artifacts_path / "models.json")
-            jsonchain.dump_json(
-                self.reactions, artifacts_path / "reaction_forces.json"
-            )
+            jsonchain.dump_json(self.reactions, artifacts_path / "reaction_forces.json")
