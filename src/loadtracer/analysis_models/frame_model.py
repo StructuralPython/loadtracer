@@ -159,8 +159,19 @@ def get_node_locations(pm: dict) -> list[tuple]:
     """
     Returns the node locations
     """
+    supports = pm["element_geometry"]["supports"]
+    length = pm['element_attributes']['length']
+
+    augmented_supports = []
+    for idx, support in enumerate(supports):
+        if idx == 0 and support['location'] != 0.0:
+            augmented_supports.append({'location': 0.0, 'fixity': 'free'})
+            augmented_supports.append(support)
+        elif idx == len(supports) - 1 and support['location'] != length:
+            augmented_supports.append(support)
+            augmented_supports.append({'location': length, 'fixity': 'free'})
     acc = []
-    for support in pm["element_geometry"]["supports"]:
+    for support in augmented_supports:
         location = support["location"]
         fixity = support["fixity"]
         constraints = None
@@ -168,6 +179,8 @@ def get_node_locations(pm: dict) -> list[tuple]:
             constraints = [1, 1, 1, 1, 1, 0]
         elif fixity == "roller":
             constraints = [0, 1, 0, 0, 0, 0]
+        elif fixity == "free":
+            constraints = [0, 0, 0, 0, 0, 0]
         assert constraints is not None
         acc.append((location, constraints))
     return sorted(acc, key=lambda x: x[0])

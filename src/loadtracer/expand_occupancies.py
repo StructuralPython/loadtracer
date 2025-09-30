@@ -74,7 +74,7 @@ def expand_occupancy_loads(
         # print(tag)
         for analysis_dir in analysis_dirs:
             if occupancy and occupancy in occupancies:
-                debug = True
+                debug = False
                 try:
                     expanded_load = expand_distributed_load(
                         dist_load,
