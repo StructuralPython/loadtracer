@@ -415,29 +415,29 @@ wheels = [
 
 [[package]]
 name = "load-distribution"
-version = "0.1.4"
+version = "0.1.6"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "numpy" },
     { name = "shapely" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/2e/64/c404bc5a2512e46b43e3c012ba3758f9b50f47517c1ad57be66ce9d56825/load_distribution-0.1.4.tar.gz", hash = "sha256:3fd9e4f0f3e05d13cf177f1b0c3205f4794cbfd49887801ee1d2f1e5feaec143", size = 15835 }
+sdist = { url = "https://files.pythonhosted.org/packages/00/02/d05f4e0783a460abf46240c2f87ce55b3a0337d7d1fbbcf4c25440c02df8/load_distribution-0.1.6.tar.gz", hash = "sha256:07bc896e6fce9b50e3148117db4ecae6487a12730cfb249cdb2362706f93e9fe", size = 15908 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/47/72/53de6becc8acb47b3a8edcb66928dd7e184f86a420c88eac87a2ef05904e/load_distribution-0.1.4-py3-none-any.whl", hash = "sha256:283fdc1fb6cddbfd71d459f406e3735ec5a016e553228f38a98e5f7cffd2760f", size = 17207 },
+    { url = "https://files.pythonhosted.org/packages/89/c3/b67e372dad34e78ce22787fcb9d67ab4bac6f56f840a88e059702f9af7b0/load_distribution-0.1.6-py3-none-any.whl", hash = "sha256:922ba394d544c93d7f57ea0d3a20ab0d76058b34552e89c80770f3971b4e262e", size = 17275 },
 ]
 
 [[package]]
 name = "loadbearing-wall"
-version = "0.2.0"
+version = "0.2.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "load-distribution" },
     { name = "pydantic" },
     { name = "safer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/8a/6d/502ddff00bd50809797153072df73eb1b04633318da177f791e9f7795441/loadbearing_wall-0.2.0.tar.gz", hash = "sha256:3408998b3a12f485112b97636fa538870f8892c6b4923deaf97156695ac34bdf", size = 8117 }
+sdist = { url = "https://files.pythonhosted.org/packages/65/f5/faaab4ac19f3dc94e18ca5a608cddf1cd23f84ce2d29de14fc41de7f6835/loadbearing_wall-0.2.1.tar.gz", hash = "sha256:2a339a4a7a05e205da574d7fa1de9484002de5937672ad955c2378065afa2a70", size = 8120 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d1/2c/12fd35baecbd1ec51032baeab4c1d4e0450e3b71cf98b64b4169532aea62/loadbearing_wall-0.2.0-py3-none-any.whl", hash = "sha256:aabc1f6b640448d322670de1cfae01400ef8e7e373d1714cdcccf382b0a86ed4", size = 8614 },
+    { url = "https://files.pythonhosted.org/packages/e2/18/f553e21597fdc8a45de7c5fbd49f99e36253e10ff867fd987e645b101de9/loadbearing_wall-0.2.1-py3-none-any.whl", hash = "sha256:9021b3d6d1f1d3a5ae559e37a18e97d5a8a11958c3bb25b439fde7832a9b5f25", size = 8615 },
 ]
 
 [[package]]
@@ -446,6 +446,7 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "jsonchain" },
+    { name = "load-distribution" },
     { name = "loadbearing-wall" },
     { name = "papermodels", extra = ["graphviz"] },
     { name = "pynite-tools" },
@@ -462,7 +463,8 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "jsonchain", specifier = ">=0.5.0" },
-    { name = "loadbearing-wall", specifier = ">=0.2.0" },
+    { name = "load-distribution", specifier = ">=0.1.6" },
+    { name = "loadbearing-wall", specifier = ">=0.2.1" },
     { name = "papermodels", extras = ["graphviz"], specifier = ">=0.14.0" },
     { name = "pynite-tools", specifier = ">=0.6.5" },
     { name = "pynitefea", specifier = "==1.1.2" },
