@@ -123,10 +123,10 @@ class LoadTracer(BaseModel, arbitrary_types_allowed=True):
                 member_model = PointColumn(expanded_papermodel)
             elif orientation == "horizontal":
                 member_model = PyniteFrame(expanded_papermodel)
-            reactions = member_model.get_reactions()
 
             model_dict = member_model.dump_model()
             self.models.update({member_name: model_dict})
+            reactions = member_model.get_reactions()
             self.reactions.update({member_name: reactions})
 
         if artifacts_dir:
