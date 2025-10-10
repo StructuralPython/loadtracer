@@ -170,6 +170,8 @@ def get_node_locations(pm: dict) -> list[tuple]:
         elif idx == len(supports) - 1 and support['location'] != length:
             augmented_supports.append(support)
             augmented_supports.append({'location': length, 'fixity': 'free'})
+        else:
+            augmented_supports.append(support)
     acc = []
     for support in augmented_supports:
         location = support["location"]
