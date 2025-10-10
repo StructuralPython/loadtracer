@@ -8,11 +8,12 @@ authors = [
 requires-python = ">=3.12"
 dependencies = [
     "papermodels[graphviz]>=0.14.0",
-    "loadbearing_wall>=0.2.0",
+    "loadbearing-wall>=0.2.1",
     "PyniteFEA==1.1.2",
     "safer>=5.1.0",
     "jsonchain>=0.5.0",
     "pynite-tools>=0.6.5",
+    "load-distribution>=0.1.6",
 ]
 
 [build-system]
