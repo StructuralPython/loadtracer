@@ -2,13 +2,17 @@ from typing import Optional, Union, Any
 from copy import deepcopy, copy
 import jsonchain
 
+class ReactionNotFoundError(Exception):
+    pass
+
 
 def expand_reaction_loads(
     member_model: dict,
     member_reactions: dict,
     distributed_direction_mapping: dict,
     point_direction_mapping: dict,
-) -> dict:
+    missing_reactions: str = "raise"
+) -> tuple[dict, dict]:
     """
     Returns a copy of 'member_model' with all reaction load transfers
     replaced by their load components as described in the 'reactions'
@@ -72,8 +76,10 @@ def expand_reaction_loads(
         components as node reactions. If this is passed as a distributed direction
         mapping, a distributed moment load would be created in addition to a distributed
         'FY' load.
+    'missing_reactions': one of either 'raise' or 'ignore'
     """
     # POINT LOADS
+    ignored_reactions = {}
     new_model = deepcopy(member_model)
     new_model["loads"]["point_loads"] = []
     new_point_loads = new_model["loads"]["point_loads"]
@@ -84,13 +90,22 @@ def expand_reaction_loads(
             continue
         transfer_index = point_load["transfer_reaction_index"]
         model_direction = point_load["direction"]
-        indexed_reactions = expand_point_reactions(
-            point_load,
-            member_reactions,
-            transfer_source,
-            model_direction,
-            point_direction_mapping,
-        )
+        try:
+            indexed_reactions = expand_point_reactions(
+                point_load,
+                member_reactions,
+                transfer_source,
+                model_direction,
+                point_direction_mapping,
+            )
+        except ReactionNotFoundError:
+            tag = member_model['element_attributes']['tag']
+            if missing_reactions != 'ignore':
+                raise ReactionNotFoundError(f"Member {tag}: No reactions were found for {transfer_source}")
+            else:
+                ignored_reactions.setdefault(tag, [])
+                ignored_reactions[tag].append(transfer_source)
+                continue
         transfer_reactions = indexed_reactions[transfer_index]
         new_point_load = copy(point_load)
         new_point_load.setdefault("expanded", [])
@@ -107,13 +122,22 @@ def expand_reaction_loads(
             continue
         transfer_index = dist_load["transfer_reaction_index"]
         model_direction = dist_load["direction"]
-        indexed_reactions = expand_distributed_reactions(
-            dist_load,
-            member_reactions,
-            transfer_source,
-            model_direction,
-            distributed_direction_mapping,
-        )
+        try:
+            indexed_reactions = expand_distributed_reactions(
+                dist_load,
+                member_reactions,
+                transfer_source,
+                model_direction,
+                distributed_direction_mapping,
+            )
+        except ReactionNotFoundError:
+            if missing_reactions != 'ignore':
+                tag = member_model['element_attributes']['tag']
+                raise ReactionNotFoundError(f"Member {tag}: No reactions were found for {transfer_source}")
+            else:
+                ignored_reactions.setdefault(tag, [])
+                ignored_reactions[tag].append(transfer_source)
+                continue
         try:
             transfer_reactions = indexed_reactions[transfer_index]
         except:
@@ -122,7 +146,7 @@ def expand_reaction_loads(
         new_dist_load.setdefault("expanded", [])
         new_dist_load["expanded"] += transfer_reactions
         new_dist_loads.append(new_dist_load)
-    return new_model
+    return new_model, ignored_reactions
 
 
 def expand_point_reactions(
@@ -174,7 +198,8 @@ def expand_point_reactions(
     }
     """
     transfer_reactions = member_reactions.get(transfer_source, None)
-    assert transfer_reactions is not None
+    if transfer_reactions is None:
+        raise ReactionNotFoundError(f"{transfer_reactions=}")
     acc = {}
     for index, node_id in enumerate(transfer_reactions):
         acc[index] = []
@@ -182,7 +207,8 @@ def expand_point_reactions(
         analysis_dirs = point_direction_mapping[model_direction]
         for analysis_dir in analysis_dirs:
             load_cases = loads_by_dir.get(analysis_dir, None)
-            assert load_cases is not None
+            if load_cases is None:
+                raise ReactionNotFoundError(f"{transfer_reactions=}")
             # Typical condition from a frame member
             for case_name, magnitude in load_cases.items():
                 new_point_load = {
@@ -192,6 +218,8 @@ def expand_point_reactions(
                     "dir": analysis_dir,
                 }
                 acc[index].append(new_point_load)
+    if not acc:
+        raise ReactionNotFoundError(f"{transfer_reactions=}")
     return acc
 
 
@@ -270,8 +298,7 @@ def expand_distributed_reactions(
             if load_cases is None:
                 load_cases = loads_by_dir.get(analysis_dir.title(), None)
             if load_cases is None:
-                raise ValueError(
-                    "The reactions are not coming in the correct format:\n"
+                raise ReactionNotFoundError(
                     f"{transfer_reactions=}"
                 )
             if isinstance(load_cases, dict):
