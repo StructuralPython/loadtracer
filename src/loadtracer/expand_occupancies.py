@@ -127,8 +127,8 @@ def expand_distributed_load(
         # because their trib area reflects the total area covered by the joist region.
         # It needs to be reduced to a unit width which is what the applied_area
         # represents on array collector elements.
-        applied_area = length
-    load_constant = applied_area * area_ratio
+        applied_area = length * area_ratio
+    load_constant = applied_area
 
     for load_case, load_value in occupancy.items():
         # load_constant = load_value * applied_area / total_area_ratio
