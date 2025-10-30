@@ -173,9 +173,19 @@ def get_node_locations(pm: dict) -> list[tuple]:
         else:
             augmented_supports.append(support)
     acc = []
-    for support in augmented_supports:
+    has_pin = False
+    for idx, support in enumerate(augmented_supports):
         location = support["location"]
-        fixity = support["fixity"]
+        if idx == 0:
+            fixity = support.get('fixity', 'pin')
+            if fixity == "pin":
+                has_pin = True
+        else:
+            fixity = support.get('fixity', 'roller')
+            if not has_pin:
+                fixity = "pin"
+                has_pin = True
+        
         constraints = None
         if fixity == "pin":
             constraints = [1, 1, 1, 1, 1, 0]

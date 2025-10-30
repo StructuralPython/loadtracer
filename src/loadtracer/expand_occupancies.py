@@ -147,5 +147,7 @@ def expand_distributed_load(
             "case": load_case,
             "dir": analysis_dir,
         }
+        if dist_load["start_loc"] - dist_load["end_loc"] <= 0.0:
+            continue
         new_dist_load["expanded"].append(expanded)
     return new_dist_load
