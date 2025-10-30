@@ -141,7 +141,7 @@ def expand_reaction_loads(
         try:
             transfer_reactions = indexed_reactions[transfer_index]
         except:
-            raise ValueError("Problem")
+            raise ValueError(f"Problem with {tag}. {indexed_reactions=} {member_reactions[tag]=}")
         new_dist_load = copy(dist_load)
         new_dist_load.setdefault("expanded", [])
         new_dist_load["expanded"] += transfer_reactions
