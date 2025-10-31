@@ -160,16 +160,16 @@ def get_node_locations(pm: dict) -> list[tuple]:
     Returns the node locations
     """
     supports = pm["element_geometry"]["supports"]
-    length = pm['element_attributes']['length']
+    length = pm["element_attributes"]["length"]
 
     augmented_supports = []
     for idx, support in enumerate(supports):
-        if idx == 0 and support['location'] != 0.0:
-            augmented_supports.append({'location': 0.0, 'fixity': 'free'})
+        if idx == 0 and support["location"] != 0.0:
+            augmented_supports.append({"location": 0.0, "fixity": "free"})
             augmented_supports.append(support)
-        elif idx == len(supports) - 1 and support['location'] != length:
+        elif idx == len(supports) - 1 and support["location"] != length:
             augmented_supports.append(support)
-            augmented_supports.append({'location': length, 'fixity': 'free'})
+            augmented_supports.append({"location": length, "fixity": "free"})
         else:
             augmented_supports.append(support)
     acc = []
@@ -177,15 +177,15 @@ def get_node_locations(pm: dict) -> list[tuple]:
     for idx, support in enumerate(augmented_supports):
         location = support["location"]
         if idx == 0:
-            fixity = support.get('fixity', 'pin')
+            fixity = support.get("fixity", "pin")
             if fixity == "pin":
                 has_pin = True
         else:
-            fixity = support.get('fixity', 'roller')
+            fixity = support.get("fixity", "roller")
             if not has_pin:
                 fixity = "pin"
                 has_pin = True
-        
+
         constraints = None
         if fixity == "pin":
             constraints = [1, 1, 1, 1, 1, 0]
