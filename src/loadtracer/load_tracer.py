@@ -36,7 +36,7 @@ class LoadTracer(BaseModel, arbitrary_types_allowed=True):
     reaction_point_load_direction_mapping: dict = Field(
         default={"gravity": ["FY"], "inplane": ["FX"], "out_of_plane": ["FZ"]}
     )
-    missing_reactions: str = 'raise'
+    missing_reactions: str = "raise"
     show_progress: bool = True
     models: Optional[dict] = None
     reactions: Optional[dict] = None
@@ -64,7 +64,7 @@ class LoadTracer(BaseModel, arbitrary_types_allowed=True):
         loaded_elements = self.geometry_graph.create_loaded_elements()
         # Include subelements in the sorted nodes
         expanded_sorted_nodes = []
-        if self.missing_reactions == 'ignore':
+        if self.missing_reactions == "ignore":
             self.ignored_reactions = {}
         for node_name in sorted_nodes:
             element = self.geometry_graph.nodes[node_name]["element"]
@@ -80,6 +80,7 @@ class LoadTracer(BaseModel, arbitrary_types_allowed=True):
             papermodel = loaded_elements[member_name].model()
             element_attributes = papermodel["element_attributes"]
             tag = element_attributes["tag"]
+            print(tag)
             expanded_papermodel = expand_occupancy_loads(
                 papermodel,
                 self.occupancies,
@@ -91,7 +92,7 @@ class LoadTracer(BaseModel, arbitrary_types_allowed=True):
                 self.reactions,
                 self.reaction_distributed_load_direction_mapping,
                 self.reaction_point_load_direction_mapping,
-                self.missing_reactions
+                self.missing_reactions,
             )
             if self.ignored_reactions is not None:
                 self.ignored_reactions.update(ignored_reactions)

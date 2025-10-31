@@ -2,6 +2,7 @@ from typing import Optional, Union, Any
 from copy import deepcopy, copy
 import jsonchain
 
+
 class ReactionNotFoundError(Exception):
     pass
 
@@ -11,7 +12,7 @@ def expand_reaction_loads(
     member_reactions: dict,
     distributed_direction_mapping: dict,
     point_direction_mapping: dict,
-    missing_reactions: str = "raise"
+    missing_reactions: str = "raise",
 ) -> tuple[dict, dict]:
     """
     Returns a copy of 'member_model' with all reaction load transfers
@@ -99,9 +100,11 @@ def expand_reaction_loads(
                 point_direction_mapping,
             )
         except ReactionNotFoundError:
-            tag = member_model['element_attributes']['tag']
-            if missing_reactions != 'ignore':
-                raise ReactionNotFoundError(f"Member {tag}: No reactions were found for {transfer_source}")
+            tag = member_model["element_attributes"]["tag"]
+            if missing_reactions != "ignore":
+                raise ReactionNotFoundError(
+                    f"Member {tag}: No reactions were found for {transfer_source}"
+                )
             else:
                 ignored_reactions.setdefault(tag, [])
                 ignored_reactions[tag].append(transfer_source)
@@ -131,9 +134,11 @@ def expand_reaction_loads(
                 distributed_direction_mapping,
             )
         except ReactionNotFoundError:
-            if missing_reactions != 'ignore':
-                tag = member_model['element_attributes']['tag']
-                raise ReactionNotFoundError(f"Member {tag}: No reactions were found for {transfer_source}")
+            if missing_reactions != "ignore":
+                tag = member_model["element_attributes"]["tag"]
+                raise ReactionNotFoundError(
+                    f"Member {tag}: No reactions were found for {transfer_source}"
+                )
             else:
                 ignored_reactions.setdefault(tag, [])
                 ignored_reactions[tag].append(transfer_source)
@@ -141,7 +146,9 @@ def expand_reaction_loads(
         try:
             transfer_reactions = indexed_reactions[transfer_index]
         except:
-            raise ValueError("Problem")
+            raise ValueError(
+                f"Problem with {tag}. {indexed_reactions=} {member_reactions[tag]=}"
+            )
         new_dist_load = copy(dist_load)
         new_dist_load.setdefault("expanded", [])
         new_dist_load["expanded"] += transfer_reactions
@@ -298,9 +305,7 @@ def expand_distributed_reactions(
             if load_cases is None:
                 load_cases = loads_by_dir.get(analysis_dir.title(), None)
             if load_cases is None:
-                raise ReactionNotFoundError(
-                    f"{transfer_reactions=}"
-                )
+                raise ReactionNotFoundError(f"{transfer_reactions=}")
             if isinstance(load_cases, dict):
                 for case_name, load in load_cases.items():
                     if isinstance(load, list):
