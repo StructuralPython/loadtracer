@@ -470,7 +470,7 @@ dependencies = [
     { name = "jsonchain" },
     { name = "load-distribution" },
     { name = "loadbearing-wall" },
-    { name = "papermodels", extra = ["graphviz"] },
+    { name = "papermodels" },
     { name = "pynite-tools" },
     { name = "pynitefea" },
     { name = "safer" },
@@ -487,7 +487,7 @@ requires-dist = [
     { name = "jsonchain", specifier = ">=0.5.0" },
     { name = "load-distribution", specifier = ">=0.1.7" },
     { name = "loadbearing-wall", specifier = ">=0.2.1" },
-    { name = "papermodels", extras = ["graphviz"], specifier = ">=0.16.1" },
+    { name = "papermodels", specifier = ">=0.16.1" },
     { name = "pynite-tools", specifier = ">=0.6.5" },
     { name = "pynitefea", specifier = "==1.1.2" },
     { name = "safer", specifier = ">=5.1.0" },
@@ -760,11 +760,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/0c/d5/62fa182e4b215c94a15b666e578a1b10a438b432cea820de76317f470445/papermodels-0.16.1-py2.py3-none-any.whl", hash = "sha256:85cf2a1eb230efb961e0a2c762cb709b8e15a75e05b0a6fb510c86757157192e", size = 58387 },
 ]
 
-[package.optional-dependencies]
-graphviz = [
-    { name = "pygraphviz" },
-]
-
 [[package]]
 name = "parse"
 version = "1.20.2"
@@ -1035,12 +1030,6 @@ sdist = { url = "https://files.pythonhosted.org/packages/7c/2d/c3338d48ea6cc0feb
 wheels = [
     { url = "https://files.pythonhosted.org/packages/8a/0b/9fcc47d19c48b59121088dd6da2488a49d5f72dacf8262e2790a1d2c7d15/pygments-2.19.1-py3-none-any.whl", hash = "sha256:9ea1544ad55cecf4b8242fab6dd35a93bbce657034b0611ee383099054ab6d8c", size = 1225293 },
 ]
-
-[[package]]
-name = "pygraphviz"
-version = "1.14"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/66/ca/823d5c74a73d6b8b08e1f5aea12468ef334f0732c65cbb18df2a7f285c87/pygraphviz-1.14.tar.gz", hash = "sha256:c10df02377f4e39b00ae17c862f4ee7e5767317f1c6b2dfd04cea6acc7fc2bea", size = 106003 }
 
 [[package]]
 name = "pynite-tools"

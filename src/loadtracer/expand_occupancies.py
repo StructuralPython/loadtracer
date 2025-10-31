@@ -71,7 +71,6 @@ def expand_occupancy_loads(
         model_dir = dist_load.get("direction", "gravity")
         analysis_dirs = distributed_direction_mapping[model_dir]
         tag = new_model["element_attributes"]["tag"]
-        # print(tag)
         for analysis_dir in analysis_dirs:
             if occupancy and occupancy in occupancies:
                 debug = False

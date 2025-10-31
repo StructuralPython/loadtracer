@@ -148,6 +148,7 @@ def convert_point_arrays_into_dist_loads(
             magnitude_factor = 1 / distance
 
             expanded_dists = []
+            point_load.setdefault("expanded", [])
             for expanded_point in point_load["expanded"]:
                 expanded_dist = {
                     "start_magnitude": magnitude_factor * expanded_point["magnitude"],

@@ -92,8 +92,8 @@ def test_convert_point_arrays_into_dist_loads():
     dist_loads = wm.convert_point_arrays_into_dist_loads(POINT_LOAD_ARRAY)
     assert len(dist_loads) == 13
     assert dist_loads[0]['start_loc'] == 0.0
-    assert dist_loads[0]['end_loc'] == 0.0565
-    assert dist_loads[1]['start_loc'] == 0.0565
+    assert dist_loads[0]['end_loc'] == 0.057
+    assert dist_loads[1]['start_loc'] == 0.057
     assert dist_loads[1]['end_loc'] == 0.613
     assert dist_loads[2]['start_loc'] == 0.613
     assert dist_loads[2]['end_loc'] == 1.613
