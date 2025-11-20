@@ -83,10 +83,11 @@ def build_linear_wall_model(pm: dict, spread_angle: float) -> LinearWallModel:
         for dt in dist_load["expanded"]:
             end_loc = dt["end_loc"]
             if length < end_loc:
-                if math.isclose(length, end_loc, rel_tol=1e-3):
+                if math.isclose(length, end_loc, rel_tol=1e-2):
                     end_loc = length
                 else:
                     raise ValueError(
+                        f"element={pm["element_attributes"]['tag']}\n"
                         f"The end location of the load is beyond the length of the wall:\n"
                         f"Wall length: {length}\n"
                         f"Distributed load: {dt}"
