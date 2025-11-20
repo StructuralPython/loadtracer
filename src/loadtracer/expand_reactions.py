@@ -218,8 +218,9 @@ def expand_point_reactions(
                 raise ReactionNotFoundError(f"{transfer_reactions=}")
             # Typical condition from a frame member
             for case_name, magnitude in load_cases.items():
+                mag = -magnitude if magnitude > 0 else magnitude
                 new_point_load = {
-                    "magnitude": -1 * magnitude,
+                    "magnitude": mag,
                     "location": point_load["location"],
                     "case": case_name,
                     "dir": analysis_dir,
@@ -311,11 +312,14 @@ def expand_distributed_reactions(
                     if isinstance(load, list):
                         # Load from a wall
                         for subload in load:
+                            sm = subload["start_magnitude"]
+                            em = subload["end_magnitude"]
+                            # only invert when positive to avoid double-negation
+                            sm_adj = -sm if sm > 0 else sm
+                            em_adj = -em if em > 0 else em
                             new_dist_load = {
-                                "start_magnitude": -subload["start_magnitude"]
-                                * dist_load["start_magnitude"],
-                                "end_magnitude": -subload["end_magnitude"]
-                                * dist_load["end_magnitude"],
+                                "start_magnitude": sm_adj * dist_load["start_magnitude"],
+                                "end_magnitude": em_adj * dist_load["end_magnitude"],
                                 "start_loc": dist_load["start_loc"],
                                 "end_loc": dist_load["end_loc"],
                                 "case": case_name,
@@ -323,10 +327,12 @@ def expand_distributed_reactions(
                             }
                             acc[index].append(new_dist_load)
                     else:
-                        # Load from a frame member
+                        # Load from a frame member (single scalar)
+                        load_val = load
+                        load_adj = -load_val if load_val > 0 else load_val
                         new_dist_load = {
-                            "start_magnitude": -1 * load * dist_load["start_magnitude"],
-                            "end_magnitude": -1 * load * dist_load["end_magnitude"],
+                            "start_magnitude": load_adj * dist_load["start_magnitude"],
+                            "end_magnitude": load_adj * dist_load["end_magnitude"],
                             "start_loc": dist_load["start_loc"],
                             "end_loc": dist_load["end_loc"],
                             "case": case_name,
