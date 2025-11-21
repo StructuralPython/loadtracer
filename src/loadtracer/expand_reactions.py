@@ -1,7 +1,7 @@
 from typing import Optional, Union, Any
 from copy import deepcopy, copy
 import jsonchain
-
+from rich import print
 
 class ReactionNotFoundError(Exception):
     pass
@@ -126,6 +126,8 @@ def expand_reaction_loads(
         transfer_index = dist_load["transfer_reaction_index"]
         model_direction = dist_load["direction"]
         try:
+            tag = member_model["element_attributes"]["tag"]
+            # print(f'{tag=}')
             indexed_reactions = expand_distributed_reactions(
                 dist_load,
                 member_reactions,
@@ -307,26 +309,39 @@ def expand_distributed_reactions(
                 load_cases = loads_by_dir.get(analysis_dir.title(), None)
             if load_cases is None:
                 raise ReactionNotFoundError(f"{transfer_reactions=}")
+            # print(f'{load_cases=}')
             if isinstance(load_cases, dict):
                 for case_name, load in load_cases.items():
                     if isinstance(load, list):
+                        # print(f'load from wall {case_name=} {load=}')
+                        # print(f'{dist_load=}')
                         # Load from a wall
                         for subload in load:
                             sm = subload["start_magnitude"]
                             em = subload["end_magnitude"]
                             # only invert when positive to avoid double-negation
-                            sm_adj = -sm if sm > 0 else sm
-                            em_adj = -em if em > 0 else em
+                            start_mag_neg = -sm if sm > 0 else sm
+                            end_mag_neg = -em if em > 0 else em
+                            # determine start_loc and end_loc
+                            if subload["start_loc"] <= dist_load["start_loc"]:
+                                start_loc = dist_load["start_loc"]
+                            else:
+                                start_loc = subload["start_loc"]
+                            if subload["end_loc"] >= dist_load["end_loc"]:
+                                end_loc = dist_load["end_loc"]
+                            else:
+                                end_loc = subload["end_loc"]
                             new_dist_load = {
-                                "start_magnitude": sm_adj * dist_load["start_magnitude"],
-                                "end_magnitude": em_adj * dist_load["end_magnitude"],
-                                "start_loc": dist_load["start_loc"],
-                                "end_loc": dist_load["end_loc"],
+                                "start_magnitude": start_mag_neg,
+                                "end_magnitude": end_mag_neg,
+                                "start_loc": start_loc,
+                                "end_loc": end_loc,
                                 "case": case_name,
                                 "dir": analysis_dir,
                             }
                             acc[index].append(new_dist_load)
                     else:
+                        print(f'load from frame member {case_name=} {load=}')
                         # Load from a frame member (single scalar)
                         load_val = load
                         load_adj = -load_val if load_val > 0 else load_val
@@ -340,6 +355,7 @@ def expand_distributed_reactions(
                         }
                         acc[index].append(new_dist_load)
             elif isinstance(load_cases, list):
+                # print(f'load from loadbearing wall {load_cases=}')
                 # When the member is a loadbearing_wall and has a list of reactions
                 for case_dist_load in load_cases:
                     new_dist_load = copy(case_dist_load)
