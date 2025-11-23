@@ -317,8 +317,8 @@ def expand_distributed_reactions(
                         # print(f'{dist_load=}')
                         # Load from a wall
                         for subload in load:
-                            sm = subload["start_magnitude"]
-                            em = subload["end_magnitude"]
+                            sm = subload["start_magnitude"] * dist_load["start_magnitude"]
+                            em = subload["end_magnitude"] * dist_load["end_magnitude"]
                             # only invert when positive to avoid double-negation
                             start_mag_neg = -sm if sm > 0 else sm
                             end_mag_neg = -em if em > 0 else em
