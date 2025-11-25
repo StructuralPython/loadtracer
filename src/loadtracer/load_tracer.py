@@ -80,7 +80,6 @@ class LoadTracer(BaseModel, arbitrary_types_allowed=True):
             papermodel = loaded_elements[member_name].model()
             element_attributes = papermodel["element_attributes"]
             tag = element_attributes["tag"]
-            print(tag)
             expanded_papermodel = expand_occupancy_loads(
                 papermodel,
                 self.occupancies,
