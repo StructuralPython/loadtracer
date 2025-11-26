@@ -143,8 +143,9 @@ def convert_point_arrays_into_dist_loads(
             start_loc = round(start_loc, 3)
             end_loc = round(end_loc, 3)
             distance = end_loc - start_loc
+            if distance == 0:
+                distance = 1
             prev_interval = interval
-
             magnitude_factor = 1 / distance
 
             expanded_dists = []

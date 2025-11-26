@@ -22,11 +22,13 @@ from .pm_processing import get_element_height
 
 from pydantic import BaseModel, Field
 
+class ReactionNotFoundError(Exception):
+    pass
 
 class LoadTracer(BaseModel, arbitrary_types_allowed=True):
     geometry_graph: "GeometryGraph"
-    occupancies: Optional[dict] = None
-    elevations: Optional[dict] = None
+    occupancies: dict
+    elevations: dict
     occupancy_distributed_load_direction_mapping: dict = Field(
         default={"gravity": ["Fy"], "inplane": ["Fx"], "out_of_plane": ["Fz"]}
     )
@@ -41,10 +43,44 @@ class LoadTracer(BaseModel, arbitrary_types_allowed=True):
     models: Optional[dict] = None
     reactions: Optional[dict] = None
     ignored_reactions: Optional[dict] = None
-    _expanded_pm: Optional[dict] = None
+    expanded_pm: Optional[dict] = None
+    load_cases_used: Optional[list[str]] = None
 
-    def generate_rundown(self, artifacts_dir: Optional[str | pathlib.Path] = None):
-        self.execute_analyses(artifacts_dir=artifacts_dir)
+    def model_post_init(self, cls):
+        loads_found = []
+        for loads in self.occupancies.values():
+            for load in loads.keys():
+                loads_found.append(load)
+        self.load_cases_used = sorted(set(loads_found))
+
+    def null_point_load(self) -> dict:
+        """
+        Returns a null point load using one of the load cases in
+        self.load_cases_used.
+        """
+        return {
+            "magnitude": 0.0,
+            "location": 0.0,
+            "case": self.load_cases_used[0],
+            "dir": self.reaction_point_load_direction_mapping['gravity'][0],
+        }
+    
+    def null_dist_load(self, member_length: float) -> dict:
+        """
+        Returns a null dist load using one of the load cases in self.load_cases_used
+        """
+        return {
+                "start_magnitude": 0.0,
+                "end_magnitude": 0.0,
+                "start_loc": 0.0,
+                "end_loc": member_length,
+                "case": self.load_cases_used[0],
+                "dir": self.reaction_distributed_load_direction_mapping['gravity'][0],
+        }
+
+    def generate_rundown(self, artifacts_dir: Optional[str | pathlib.Path] = None, progress: bool = False):
+        self.execute_analyses(artifacts_dir=artifacts_dir, progress=progress)
+
 
     def execute_analyses(
         self,
@@ -59,7 +95,7 @@ class LoadTracer(BaseModel, arbitrary_types_allowed=True):
         """
         self.models = {}
         self.reactions = {}
-        self._expanded_pm = {}
+        self.expanded_pm = {}
         sorted_nodes = nx.topological_sort(self.geometry_graph)
         loaded_elements = self.geometry_graph.create_loaded_elements()
         # Include subelements in the sorted nodes
@@ -75,27 +111,32 @@ class LoadTracer(BaseModel, arbitrary_types_allowed=True):
                 expanded_sorted_nodes.append(element.tag)
         node_iterator = expanded_sorted_nodes
         if progress:
-            node_iterator = track(list(sorted_nodes))
+            node_iterator = track(list(expanded_sorted_nodes))
         for member_name in node_iterator:
             papermodel = loaded_elements[member_name].model()
             element_attributes = papermodel["element_attributes"]
             tag = element_attributes["tag"]
+            length = element_attributes['length']
             expanded_papermodel = expand_occupancy_loads(
                 papermodel,
                 self.occupancies,
                 self.occupancy_distributed_load_direction_mapping,
                 reaction_type=element_attributes["reaction_type"],
+                null_point_load=self.null_point_load(),
+                null_dist_load=self.null_dist_load(member_length=length)
             )
             expanded_papermodel, ignored_reactions = expand_reaction_loads(
                 expanded_papermodel,
                 self.reactions,
                 self.reaction_distributed_load_direction_mapping,
                 self.reaction_point_load_direction_mapping,
-                self.missing_reactions,
+                null_point_load=self.null_point_load(),
+                null_dist_load=self.null_dist_load(member_length=length),
+                missing_reactions=self.missing_reactions,
             )
             if self.ignored_reactions is not None:
                 self.ignored_reactions.update(ignored_reactions)
-            self._expanded_pm[member_name] = expanded_papermodel
+            self.expanded_pm[member_name] = expanded_papermodel
             orientation = expanded_papermodel["element_attributes"]["orientation"]
             # reaction_type = papermodel['element_attributes']['reaction_type']
             tag = expanded_papermodel["element_attributes"]["tag"]
@@ -110,17 +151,18 @@ class LoadTracer(BaseModel, arbitrary_types_allowed=True):
                 orientation == "vertical"
                 and element_attributes["reaction_type"] == "linear"
             ):
-                distributed_loads = convert_point_arrays_into_dist_loads(
-                    expanded_papermodel["loads"]["point_loads"]
-                )
-                non_arrays = filter_non_point_arrays(
-                    expanded_papermodel["loads"]["point_loads"]
-                )
+                # TODO: Why did I do this? Why is this necessary?
+                # distributed_loads = convert_point_arrays_into_dist_loads(
+                #     expanded_papermodel["loads"]["point_loads"]
+                # )
+                # non_arrays = filter_non_point_arrays(
+                #     expanded_papermodel["loads"]["point_loads"]
+                # )
 
-                expanded_papermodel["loads"]["point_loads"] = non_arrays
-                expanded_papermodel["loads"]["distributed_loads"].extend(
-                    distributed_loads
-                )
+                expanded_papermodel["loads"]["point_loads"] = expanded_papermodel["loads"]["point_loads"]
+                # expanded_papermodel["loads"]["distributed_loads"].extend(
+                #     distributed_loads
+                # )
 
                 member_model = LoadbearingWall(expanded_papermodel)
             elif (
@@ -133,7 +175,13 @@ class LoadTracer(BaseModel, arbitrary_types_allowed=True):
 
             model_dict = member_model.dump_model()
             self.models.update({member_name: model_dict})
-            reactions = member_model.get_reactions()
+            try:
+                reactions = member_model.get_reactions()
+            except:
+                if self.missing_reactions == 'raise':
+                    raise ReactionNotFoundError(f'Error calculating reaction for: {member_name}')
+                else:
+                    reactions = {}
             self.reactions.update({member_name: reactions})
 
         if artifacts_dir:

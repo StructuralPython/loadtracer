@@ -69,7 +69,7 @@ def build_column_model(pm: dict) -> cc.ConcentricColumn:
         gravity_dir="Fx",
         strong_axis_dir="Fy",
         weak_axis_dir="Fz",
-        reverse_reaction_sign=False,
+        reverse_reaction_sign=True,
     )
     for point_load in pm["loads"]["point_loads"]:
         for pt_component in point_load["expanded"]:

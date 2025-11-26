@@ -6,6 +6,8 @@ def expand_occupancy_loads(
     occupancies: dict,
     distributed_direction_mapping: dict,
     reaction_type: str,
+    null_point_load: dict,
+    null_dist_load: dict,
 ) -> dict:
     """
     Returns a copy of 'member_model' with all occupancy loads
@@ -37,6 +39,9 @@ def expand_occupancy_loads(
     'reaction_type': One of 'linear' or 'point'; used in determining how to treat
         supplied trib areas which represent different things based on the
         reaction_type.
+    'null_point_load': A dictionary representing a null load (0 magnitude)
+        for each load case in the occupancies.
+    'null_dist_load': A dictionary representing a null dist load (0)
     """
     new_model = deepcopy(member_model)
     # new_model['loads']['point_loads'] = []
@@ -81,6 +86,7 @@ def expand_occupancy_loads(
                         analysis_dir,
                         member_model["element_attributes"]["length"],
                         reaction_type,
+                        null_dist_load,
                         debug=debug,
                     )
                 except Exception as e:
@@ -105,6 +111,7 @@ def expand_distributed_load(
     analysis_dir: str,
     length: float,
     reaction_type: str,
+    null_dist_load: dict,
     debug: bool = False,
 ) -> dict:
     """
@@ -126,7 +133,7 @@ def expand_distributed_load(
         # because their trib area reflects the total area covered by the joist region.
         # It needs to be reduced to a unit width which is what the applied_area
         # represents on array collector elements.
-        applied_area = length * area_ratio
+        applied_area = 1 * length * area_ratio
     load_constant = applied_area
 
     for load_case, load_value in occupancy.items():
@@ -149,4 +156,7 @@ def expand_distributed_load(
         if dist_load["end_loc"] - dist_load["start_loc"] <= 0.0:
             continue
         new_dist_load["expanded"].append(expanded)
+    if new_dist_load['expanded'] == []:
+        new_dist_load['expanded'].append(null_dist_load)
+
     return new_dist_load
