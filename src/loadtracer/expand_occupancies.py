@@ -156,7 +156,7 @@ def expand_distributed_load(
         if dist_load["end_loc"] - dist_load["start_loc"] <= 0.0:
             continue
         new_dist_load["expanded"].append(expanded)
-    if new_dist_load['expanded'] == []:
-        new_dist_load['expanded'].append(null_dist_load)
+    if new_dist_load["expanded"] == []:
+        new_dist_load["expanded"].append(null_dist_load)
 
     return new_dist_load

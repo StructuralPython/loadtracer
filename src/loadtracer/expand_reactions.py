@@ -88,7 +88,7 @@ def expand_reaction_loads(
     new_model = deepcopy(member_model)
     new_model["loads"]["point_loads"] = []
     point_loads = member_model["loads"]["point_loads"]
-    new_point_loads = new_model['loads']['point_loads']
+    new_point_loads = new_model["loads"]["point_loads"]
     if not point_loads:
         point_loads = [null_point_load]
     for point_load in point_loads:
@@ -105,7 +105,7 @@ def expand_reaction_loads(
                 transfer_source,
                 model_direction,
                 point_direction_mapping,
-                null_point_load
+                null_point_load,
             )
         except ReactionNotFoundError:
             tag = member_model["element_attributes"]["tag"]
@@ -140,7 +140,7 @@ def expand_reaction_loads(
                 transfer_source,
                 model_direction,
                 distributed_direction_mapping,
-                null_dist_load
+                null_dist_load,
             )
         except ReactionNotFoundError:
             if missing_reactions != "ignore":
@@ -171,7 +171,7 @@ def expand_point_reactions(
     transfer_source,
     model_direction,
     point_direction_mapping,
-    null_point_load: dict
+    null_point_load: dict,
 ) -> dict:
     """
     Returns a dictionary of load point reactions structured the following way:
@@ -224,7 +224,7 @@ def expand_point_reactions(
         loads_by_dir = transfer_reactions[node_id]
         analysis_dirs = point_direction_mapping[model_direction]
         for analysis_dir in analysis_dirs:
-            load_cases = loads_by_dir.get(analysis_dir, [null_point_load['case']])
+            load_cases = loads_by_dir.get(analysis_dir, [null_point_load["case"]])
             if load_cases is None:
                 acc[index].append(null_point_load)
                 return acc

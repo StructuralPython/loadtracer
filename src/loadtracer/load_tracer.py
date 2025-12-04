@@ -22,8 +22,10 @@ from .pm_processing import get_element_height
 
 from pydantic import BaseModel, Field
 
+
 class ReactionNotFoundError(Exception):
     pass
+
 
 class LoadTracer(BaseModel, arbitrary_types_allowed=True):
     geometry_graph: "GeometryGraph"
@@ -62,35 +64,35 @@ class LoadTracer(BaseModel, arbitrary_types_allowed=True):
             "magnitude": 0.0,
             "location": 0.0,
             "case": self.load_cases_used[0],
-            "dir": self.reaction_point_load_direction_mapping['gravity'][0],
+            "dir": self.reaction_point_load_direction_mapping["gravity"][0],
         }
-    
+
     def null_dist_load(self, member_length: float) -> dict:
         """
         Returns a null dist load using one of the load cases in self.load_cases_used
         """
         return {
-                "start_magnitude": 0.0,
-                "end_magnitude": 0.0,
-                "start_loc": 0.0,
-                "end_loc": member_length,
-                "case": self.load_cases_used[0],
-                "dir": self.reaction_distributed_load_direction_mapping['gravity'][0],
+            "start_magnitude": 0.0,
+            "end_magnitude": 0.0,
+            "start_loc": 0.0,
+            "end_loc": member_length,
+            "case": self.load_cases_used[0],
+            "dir": self.reaction_distributed_load_direction_mapping["gravity"][0],
         }
 
-    def generate_rundown(self, 
-            artifacts_dir: Optional[str | pathlib.Path] = None, 
-            progress: bool = False,
-            linear_wall_spread_angle: float = 0,
-            linear_wall_minimum_point_spread: float = 1
-        ):
+    def generate_rundown(
+        self,
+        artifacts_dir: Optional[str | pathlib.Path] = None,
+        progress: bool = False,
+        linear_wall_spread_angle: float = 0,
+        linear_wall_minimum_point_spread: float = 1,
+    ):
         self.execute_analyses(
-            artifacts_dir=artifacts_dir, 
+            artifacts_dir=artifacts_dir,
             progress=progress,
             linear_wall_spread_angle=linear_wall_spread_angle,
-            linear_wall_minimum_point_spread=linear_wall_minimum_point_spread
+            linear_wall_minimum_point_spread=linear_wall_minimum_point_spread,
         )
-
 
     def execute_analyses(
         self,
@@ -98,7 +100,7 @@ class LoadTracer(BaseModel, arbitrary_types_allowed=True):
         progress: bool = False,
         debug: bool = False,
         linear_wall_spread_angle: float = 0,
-        linear_wall_minimum_point_spread: float = 1
+        linear_wall_minimum_point_spread: float = 1,
     ) -> None:
         """
         Executes the analyses to calculate reactions so that the
@@ -128,14 +130,14 @@ class LoadTracer(BaseModel, arbitrary_types_allowed=True):
             papermodel = loaded_elements[member_name].model()
             element_attributes = papermodel["element_attributes"]
             tag = element_attributes["tag"]
-            length = element_attributes['length']
+            length = element_attributes["length"]
             expanded_papermodel = expand_occupancy_loads(
                 papermodel,
                 self.occupancies,
                 self.occupancy_distributed_load_direction_mapping,
                 reaction_type=element_attributes["reaction_type"],
                 null_point_load=self.null_point_load(),
-                null_dist_load=self.null_dist_load(member_length=length)
+                null_dist_load=self.null_dist_load(member_length=length),
             )
             expanded_papermodel, ignored_reactions = expand_reaction_loads(
                 expanded_papermodel,
@@ -175,12 +177,11 @@ class LoadTracer(BaseModel, arbitrary_types_allowed=True):
                 # expanded_papermodel["loads"]["distributed_loads"].extend(
                 #     distributed_loads
                 # )
-                
 
                 member_model = LoadbearingWall(
                     expanded_papermodel,
                     vertical_spread_angle=linear_wall_spread_angle,
-                    minimum_point_spread=linear_wall_minimum_point_spread
+                    minimum_point_spread=linear_wall_minimum_point_spread,
                 )
                 member_model.model.spread_loads()
             elif (
@@ -196,8 +197,10 @@ class LoadTracer(BaseModel, arbitrary_types_allowed=True):
             try:
                 reactions = member_model.get_reactions()
             except:
-                if self.missing_reactions == 'raise':
-                    raise ReactionNotFoundError(f'Error calculating reaction for: {member_name}')
+                if self.missing_reactions == "raise":
+                    raise ReactionNotFoundError(
+                        f"Error calculating reaction for: {member_name}"
+                    )
                 else:
                     reactions = {}
             self.reactions.update({member_name: reactions})
