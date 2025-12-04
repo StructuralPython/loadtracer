@@ -78,8 +78,18 @@ class LoadTracer(BaseModel, arbitrary_types_allowed=True):
                 "dir": self.reaction_distributed_load_direction_mapping['gravity'][0],
         }
 
-    def generate_rundown(self, artifacts_dir: Optional[str | pathlib.Path] = None, progress: bool = False):
-        self.execute_analyses(artifacts_dir=artifacts_dir, progress=progress)
+    def generate_rundown(self, 
+            artifacts_dir: Optional[str | pathlib.Path] = None, 
+            progress: bool = False,
+            linear_wall_spread_angle: float = 0,
+            linear_wall_minimum_point_spread: float = 1
+        ):
+        self.execute_analyses(
+            artifacts_dir=artifacts_dir, 
+            progress=progress,
+            linear_wall_spread_angle=linear_wall_spread_angle,
+            linear_wall_minimum_point_spread=linear_wall_minimum_point_spread
+        )
 
 
     def execute_analyses(
@@ -87,6 +97,8 @@ class LoadTracer(BaseModel, arbitrary_types_allowed=True):
         artifacts_dir: Optional[str | pathlib.Path] = None,
         progress: bool = False,
         debug: bool = False,
+        linear_wall_spread_angle: float = 0,
+        linear_wall_minimum_point_spread: float = 1
     ) -> None:
         """
         Executes the analyses to calculate reactions so that the
@@ -159,12 +171,18 @@ class LoadTracer(BaseModel, arbitrary_types_allowed=True):
                 #     expanded_papermodel["loads"]["point_loads"]
                 # )
 
-                expanded_papermodel["loads"]["point_loads"] = expanded_papermodel["loads"]["point_loads"]
+                # expanded_papermodel["loads"]["point_loads"] = non_arrays
                 # expanded_papermodel["loads"]["distributed_loads"].extend(
                 #     distributed_loads
                 # )
+                
 
-                member_model = LoadbearingWall(expanded_papermodel)
+                member_model = LoadbearingWall(
+                    expanded_papermodel,
+                    vertical_spread_angle=linear_wall_spread_angle,
+                    minimum_point_spread=linear_wall_minimum_point_spread
+                )
+                member_model.model.spread_loads()
             elif (
                 orientation == "vertical"
                 and element_attributes["reaction_type"] == "point"

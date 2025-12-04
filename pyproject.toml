@@ -7,9 +7,9 @@ authors = [
 ]
 requires-python = ">=3.12"
 dependencies = [
-    "papermodels>=0.16.1",
-    "loadbearing-wall>=0.2.1",
-    "PyniteFEA==1.6.2",
+    "papermodels>=0.19.0",
+    "loadbearing-wall>=0.3.0",
+    "PyniteFEA>=1.6.2",
     "safer>=5.1.0",
     "jsonchain>=0.5.0",
     "pynite-tools>=0.6.7",

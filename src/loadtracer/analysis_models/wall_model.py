@@ -12,10 +12,11 @@ import math
 class LoadbearingWall(AbstractAnalysisModel):
     pm: dict
     model: Optional[LinearWallModel]
-    vertical_spread_angle: float = 0.0
+    vertical_spread_angle: float = 0
+    minimum_point_spread: float = 0.5
 
     def __post_init__(self):
-        self.model = build_linear_wall_model(self.pm, self.vertical_spread_angle)
+        self.model = build_linear_wall_model(self.pm, self.vertical_spread_angle, self.minimum_point_spread)
 
     def get_reactions(self):
         reactions = self.model.get_reactions()
@@ -32,7 +33,7 @@ class LoadbearingWall(AbstractAnalysisModel):
             return self.model.to_json(self.model, filepath, indent=indent)
         else:
             return self.model.dump_dict()
-
+        
     def load_model(
         self,
         filepath: Optional[str | pathlib.Path] = None,
@@ -61,14 +62,19 @@ class LoadbearingWall(AbstractAnalysisModel):
             return LinearWallModel.from_dict(model_data)
 
 
-def build_linear_wall_model(pm: dict, spread_angle: float) -> LinearWallModel:
+def build_linear_wall_model(
+    pm: dict,
+    vertical_spread_angle: float,
+    minimum_point_spread: float
+) -> LinearWallModel:
     """
     Returns a LinearWallModel based on the data within 'pm'
     """
     wall_model = LinearWallModel(
         height=pm["element_attributes"]["height"],
         length=pm["element_attributes"]["length"],
-        vertical_spread_angle=spread_angle,
+        vertical_spread_angle=vertical_spread_angle,
+        minimum_point_spread=minimum_point_spread,
         gravity_dir="Fy",
         inplane_dir="Fx",
         out_of_plane_dir="Fz",
@@ -76,6 +82,7 @@ def build_linear_wall_model(pm: dict, spread_angle: float) -> LinearWallModel:
         magnitude_end_key="end_magnitude",
         location_start_key="start_loc",
         location_end_key="end_loc",
+        reverse_reaction_force_direction=True
     )
 
     length = pm["element_attributes"]["length"]
@@ -100,6 +107,14 @@ def build_linear_wall_model(pm: dict, spread_angle: float) -> LinearWallModel:
                 location_end=end_loc,
                 case=dt["case"],
                 dir="Fy",
+            )
+    for point_load in pm['loads']['point_loads']:
+        for pt in point_load['expanded']:
+            wall_model.add_point_load(
+                magnitude=pt['magnitude'],
+                location=pt['location'],
+                case=pt['case'],
+                dir=pt['dir'],
             )
     return wall_model
 
