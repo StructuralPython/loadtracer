@@ -1,24 +1,34 @@
+from typing import Optional
 import re
 
 
-def get_element_height(pm: dict, elevations: dict):
+def get_element_height(
+    pm: dict, elevations: Optional[dict] = None, element_heights: Optional[dict] = None
+):
     """
     Determines the floor to floor height from 'floor_heights' and populates
     the 'height' attribute in 'pm' (a model for a single element).
     'pm' -a papermodel dict
     'elevations' - a dictionary of floor elevations where the keys are the floor
         name and the values are the floor elevation
+    'element_heights' - a dictionary of actual element heights
     """
-    elevations_from_bottom = sorted(elevations.values())
+    if elevations is None and element_heights is None:
+        raise ValueError("Pass one of either elevations or element_heights")
     floor_index = extract_floor_index(pm["element_attributes"]["tag"])
-    target_elevation = elevations_from_bottom[floor_index]
-    if floor_index == 0 and len(elevations_from_bottom) == 1:
-        floor_height = target_elevation
-    elif floor_index == 0:
-        floor_height = 0.0
-    else:
-        floor_height = target_elevation - elevations_from_bottom[floor_index - 1]
-    return floor_height
+    if elevations is not None:
+        elevations_from_bottom = sorted(elevations.values())
+        target_elevation = elevations_from_bottom[floor_index]
+        if floor_index == 0 and len(elevations_from_bottom) == 1:
+            floor_height = target_elevation
+        elif floor_index == 0:
+            floor_height = 0.0
+        else:
+            floor_height = target_elevation - elevations_from_bottom[floor_index - 1]
+        return floor_height
+    elif element_heights is not None:
+        floor_height = element_heights[floor_index]
+        return floor_height
 
 
 def extract_floor_index(tag: str) -> int:
