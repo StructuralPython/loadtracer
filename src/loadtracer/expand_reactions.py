@@ -12,6 +12,8 @@ def expand_reaction_loads(
     member_reactions: dict,
     distributed_direction_mapping: dict,
     point_direction_mapping: dict,
+    null_point_load: dict,
+    null_dist_load: dict,
     missing_reactions: str = "raise",
 ) -> tuple[dict, dict]:
     """
@@ -77,20 +79,25 @@ def expand_reaction_loads(
         components as node reactions. If this is passed as a distributed direction
         mapping, a distributed moment load would be created in addition to a distributed
         'FY' load.
+    'null_point_load': A valid null point load to be applied as a reaction in the event no loads have been applied
+    'null_dist_load': A valid null dist load to be applied as a reaction in the event no loads have been applied
     'missing_reactions': one of either 'raise' or 'ignore'
     """
     # POINT LOADS
     ignored_reactions = {}
     new_model = deepcopy(member_model)
     new_model["loads"]["point_loads"] = []
+    point_loads = member_model["loads"]["point_loads"]
     new_point_loads = new_model["loads"]["point_loads"]
-    for point_load in member_model["loads"]["point_loads"]:
-        transfer_source = point_load["transfer_source"]
+    if not point_loads:
+        point_loads = [null_point_load]
+    for point_load in point_loads:
+        transfer_source = point_load.get("transfer_source", "null")
         if not transfer_source:
             new_point_loads.append(point_load)
             continue
-        transfer_index = point_load["transfer_reaction_index"]
-        model_direction = point_load["direction"]
+        transfer_index = point_load.get("transfer_reaction_index", 0)
+        model_direction = point_load.get("direction", "gravity")
         try:
             indexed_reactions = expand_point_reactions(
                 point_load,
@@ -98,6 +105,7 @@ def expand_reaction_loads(
                 transfer_source,
                 model_direction,
                 point_direction_mapping,
+                null_point_load,
             )
         except ReactionNotFoundError:
             tag = member_model["element_attributes"]["tag"]
@@ -109,7 +117,7 @@ def expand_reaction_loads(
                 ignored_reactions.setdefault(tag, [])
                 ignored_reactions[tag].append(transfer_source)
                 continue
-        transfer_reactions = indexed_reactions[transfer_index]
+        transfer_reactions = indexed_reactions.get(transfer_index, [null_point_load])
         new_point_load = copy(point_load)
         new_point_load.setdefault("expanded", [])
         new_point_load["expanded"] += transfer_reactions
@@ -132,6 +140,7 @@ def expand_reaction_loads(
                 transfer_source,
                 model_direction,
                 distributed_direction_mapping,
+                null_dist_load,
             )
         except ReactionNotFoundError:
             if missing_reactions != "ignore":
@@ -162,6 +171,7 @@ def expand_point_reactions(
     transfer_source,
     model_direction,
     point_direction_mapping,
+    null_point_load: dict,
 ) -> dict:
     """
     Returns a dictionary of load point reactions structured the following way:
@@ -206,16 +216,18 @@ def expand_point_reactions(
     """
     transfer_reactions = member_reactions.get(transfer_source, None)
     if transfer_reactions is None:
-        raise ReactionNotFoundError(f"{transfer_reactions=}")
+        return {0: [null_point_load]}
+        # raise ReactionNotFoundError(f"{transfer_reactions=}")
     acc = {}
     for index, node_id in enumerate(transfer_reactions):
         acc[index] = []
         loads_by_dir = transfer_reactions[node_id]
         analysis_dirs = point_direction_mapping[model_direction]
         for analysis_dir in analysis_dirs:
-            load_cases = loads_by_dir.get(analysis_dir, None)
+            load_cases = loads_by_dir.get(analysis_dir, [null_point_load["case"]])
             if load_cases is None:
-                raise ReactionNotFoundError(f"{transfer_reactions=}")
+                acc[index].append(null_point_load)
+                return acc
             # Typical condition from a frame member
             for case_name, magnitude in load_cases.items():
                 new_point_load = {
@@ -226,7 +238,9 @@ def expand_point_reactions(
                 }
                 acc[index].append(new_point_load)
     if not acc:
-        raise ReactionNotFoundError(f"{transfer_reactions=}")
+        # raise ReactionNotFoundError(f"{transfer_reactions=}")
+        acc[0] = []
+        acc[0].append(null_point_load)
     return acc
 
 
@@ -236,6 +250,7 @@ def expand_distributed_reactions(
     transfer_source,
     model_direction,
     distributed_direction_mapping,
+    null_dist_load: dict,
 ) -> dict:
     """
     Returns a dictionary of load distributed reactions structured the following way:
@@ -305,7 +320,9 @@ def expand_distributed_reactions(
             if load_cases is None:
                 load_cases = loads_by_dir.get(analysis_dir.title(), None)
             if load_cases is None:
-                raise ReactionNotFoundError(f"{transfer_reactions=}")
+                # raise ReactionNotFoundError(f"{transfer_reactions=}")
+                acc[index].append(null_dist_load)
+                return acc
             if isinstance(load_cases, dict):
                 for case_name, load in load_cases.items():
                     if isinstance(load, list):
