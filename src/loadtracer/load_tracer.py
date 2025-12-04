@@ -30,7 +30,8 @@ class ReactionNotFoundError(Exception):
 class LoadTracer(BaseModel, arbitrary_types_allowed=True):
     geometry_graph: "GeometryGraph"
     occupancies: dict
-    elevations: dict
+    elevations: Optional[dict] = None
+    vertical_element_heights: Optional[dict] = None
     occupancy_distributed_load_direction_mapping: dict = Field(
         default={"gravity": ["Fy"], "inplane": ["Fx"], "out_of_plane": ["Fz"]}
     )
@@ -156,7 +157,7 @@ class LoadTracer(BaseModel, arbitrary_types_allowed=True):
             tag = expanded_papermodel["element_attributes"]["tag"]
             if orientation == "vertical":
                 element_height = get_element_height(
-                    expanded_papermodel, self.elevations
+                    expanded_papermodel, self.elevations, self.vertical_element_heights
                 )
                 expanded_papermodel["element_attributes"]["height"] = element_height
                 expanded_papermodel["element_geometry"]["height"] = element_height
