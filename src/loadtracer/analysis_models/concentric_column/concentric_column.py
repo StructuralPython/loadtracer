@@ -10,7 +10,7 @@ class ConcentricColumn(BaseModel):
     gravity_dir: str = "z"
     strong_axis_dir: str = "y"
     weak_axis_dir: str = "x"
-    reverse_reaction_sign: bool = False
+    reverse_reaction_sign: bool = True
 
     def model_post_init(self, __context: Any):
         if self.point_loads is None:
