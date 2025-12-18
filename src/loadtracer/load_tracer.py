@@ -87,12 +87,14 @@ class LoadTracer(BaseModel, arbitrary_types_allowed=True):
         progress: bool = False,
         linear_wall_spread_angle: float = 0,
         linear_wall_minimum_point_spread: float = 1,
+        exclude_members: Optional[list[str]] = None,
     ):
         self.execute_analyses(
             artifacts_dir=artifacts_dir,
             progress=progress,
             linear_wall_spread_angle=linear_wall_spread_angle,
             linear_wall_minimum_point_spread=linear_wall_minimum_point_spread,
+            exclude_members=exclude_members,
         )
 
     def execute_analyses(
@@ -102,11 +104,17 @@ class LoadTracer(BaseModel, arbitrary_types_allowed=True):
         debug: bool = False,
         linear_wall_spread_angle: float = 0,
         linear_wall_minimum_point_spread: float = 1,
+        exclude_members: Optional[list[str]] = None,
     ) -> None:
         """
         Executes the analyses to calculate reactions so that the
         entire geometry graph can be expressed as completely resolved
         analysis models.
+
+        'exclude_members': A list of member tags to completely exclude from the load
+            rundown process. If a member with this tag is encountered, it will not be
+            analyzed. If this member applies loads to another member, these loads will
+            be ignored.
         """
         self.models = {}
         self.reactions = {}
@@ -127,7 +135,10 @@ class LoadTracer(BaseModel, arbitrary_types_allowed=True):
         node_iterator = expanded_sorted_nodes
         if progress:
             node_iterator = track(list(expanded_sorted_nodes))
+        exclude_members = exclude_members or []
         for member_name in node_iterator:
+            if member_name in exclude_members:
+                continue
             papermodel = loaded_elements[member_name].model()
             element_attributes = papermodel["element_attributes"]
             tag = element_attributes["tag"]
@@ -148,6 +159,7 @@ class LoadTracer(BaseModel, arbitrary_types_allowed=True):
                 null_point_load=self.null_point_load(),
                 null_dist_load=self.null_dist_load(member_length=length),
                 missing_reactions=self.missing_reactions,
+                exclude_members=exclude_members,
             )
             if self.ignored_reactions is not None:
                 self.ignored_reactions.update(ignored_reactions)
