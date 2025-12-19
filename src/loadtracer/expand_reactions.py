@@ -15,6 +15,7 @@ def expand_reaction_loads(
     null_point_load: dict,
     null_dist_load: dict,
     missing_reactions: str = "raise",
+    exclude_members: Optional[list[str]] = None,
 ) -> tuple[dict, dict]:
     """
     Returns a copy of 'member_model' with all reaction load transfers
@@ -82,6 +83,8 @@ def expand_reaction_loads(
     'null_point_load': A valid null point load to be applied as a reaction in the event no loads have been applied
     'null_dist_load': A valid null dist load to be applied as a reaction in the event no loads have been applied
     'missing_reactions': one of either 'raise' or 'ignore'
+    'exclude_members': If a transfer load on the member_model includes a reaction from a member
+        in 'exclude_members', that transfer load will be ignored.
     """
     # POINT LOADS
     ignored_reactions = {}
@@ -140,6 +143,8 @@ def expand_reaction_loads(
         new_dist_load = copy(dist_load)
         new_dist_load.setdefault("expanded", [])
         transfer_source = dist_load["transfer_source"]
+        if transfer_source in exclude_members:
+            continue
         transfer_index = dist_load["transfer_reaction_index"]
         transfer_reactions = member_reactions.get(transfer_source, None)
         model_direction = dist_load.get('direction', None)
