@@ -87,6 +87,8 @@ class LoadTracer(BaseModel, arbitrary_types_allowed=True):
         progress: bool = False,
         linear_wall_spread_angle: float = 0,
         linear_wall_minimum_point_spread: float = 1,
+        exclude_members: Optional[list[str]] = None,
+        missing_reactions: str = 'warn'
     ):
         self.execute_analyses(
             artifacts_dir=artifacts_dir,
