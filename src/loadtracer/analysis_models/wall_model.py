@@ -96,7 +96,8 @@ def build_linear_wall_model(
                     raise ValueError(
                         f"The end location of the load is beyond the length of the wall:\n"
                         f"Wall length: {length}\n"
-                        f"Distributed load: {dt}"
+                        f"Distributed load: {dt}\n"
+                        f"{pm['element_attributes']['tag']=}"
                     )
             else:
                 end_loc = dt["end_loc"]

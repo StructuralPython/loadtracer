@@ -353,8 +353,8 @@ def expand_distributed_reactions(
                                 * dist_load["start_magnitude"],
                                 "end_magnitude": -subload["end_magnitude"]
                                 * dist_load["end_magnitude"],
-                                "start_loc": dist_load["start_loc"],
-                                "end_loc": dist_load["end_loc"],
+                                "start_loc": subload["start_loc"],
+                                "end_loc": subload["end_loc"],
                                 "case": case_name,
                                 "dir": analysis_dir,
                             }
