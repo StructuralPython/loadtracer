@@ -84,23 +84,24 @@ def build_linear_wall_model(
         location_end_key="end_loc",
         reverse_reaction_force_direction=True,
     )
-
     length = pm["element_attributes"]["length"]
     for dist_load in pm["loads"]["distributed_loads"]:
         for dt in dist_load["expanded"]:
             end_loc = dt["end_loc"]
-            if length < end_loc:
-                if math.isclose(length, end_loc, rel_tol=1e-3):
-                    end_loc = length
-                else:
-                    raise ValueError(
-                        f"The end location of the load is beyond the length of the wall:\n"
-                        f"Wall length: {length}\n"
-                        f"Distributed load: {dt}\n"
-                        f"{pm['element_attributes']['tag']=}"
-                    )
-            else:
-                end_loc = dt["end_loc"]
+            if end_loc > length:
+                end_loc = length
+            # if length < end_loc:
+            #     if math.isclose(length, end_loc, rel_tol=1e-3):
+            #         end_loc = length
+            #     else:
+            #         raise ValueError(
+            #             f"The end location of the load is beyond the length of the wall:\n"
+            #             f"Wall length: {length}\n"
+            #             f"Distributed load: {dt}\n"
+            #             f"{pm['element_attributes']['tag']=}"
+            #         )
+            # else:
+            #     end_loc = dt["end_loc"]
             wall_model.add_dist_load(
                 magnitude_start=dt["start_magnitude"],
                 magnitude_end=dt["end_magnitude"],
@@ -111,12 +112,17 @@ def build_linear_wall_model(
             )
     for point_load in pm["loads"]["point_loads"]:
         for pt in point_load["expanded"]:
-            wall_model.add_point_load(
-                magnitude=pt["magnitude"],
-                location=pt["location"],
-                case=pt["case"],
-                dir=pt["dir"],
-            )
+            if pt['location'] > length:
+                pt['location'] = length
+            try:
+                wall_model.add_point_load(
+                    magnitude=pt["magnitude"],
+                    location=pt["location"],
+                    case=pt["case"],
+                    dir=pt["dir"],
+                )
+            except AssertionError:
+                print(pt, length)
     return wall_model
 
 
