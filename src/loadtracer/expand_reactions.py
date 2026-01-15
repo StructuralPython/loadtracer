@@ -348,13 +348,16 @@ def expand_distributed_reactions(
                     if isinstance(load, list):
                         # Load from a wall
                         for subload in load:
+                            start_loc = dist_load['start_loc'] + subload['start_loc']
+                            distance = subload['end_loc'] - subload['start_loc']
+                            end_loc = start_loc + distance
                             new_dist_load = {
                                 "start_magnitude": -subload["start_magnitude"]
                                 * dist_load["start_magnitude"],
                                 "end_magnitude": -subload["end_magnitude"]
                                 * dist_load["end_magnitude"],
-                                "start_loc": subload["start_loc"],
-                                "end_loc": subload["end_loc"],
+                                "start_loc": start_loc,
+                                "end_loc": end_loc,
                                 "case": case_name,
                                 "dir": analysis_dir,
                             }
