@@ -147,7 +147,7 @@ def expand_reaction_loads(
             continue
         transfer_index = dist_load["transfer_reaction_index"]
         transfer_reactions = member_reactions.get(transfer_source, None)
-        model_direction = dist_load.get('direction', None)
+        model_direction = dist_load.get("direction", None)
         if not transfer_reactions or transfer_reactions == {0: {}}:
             if missing_reactions == "raise":
                 raise ReactionNotFoundError(f"Reaction for {tag} not found.")
@@ -247,7 +247,9 @@ def expand_point_reactions(
             # load_cases = loads_by_dir.get(analysis_dir, [null_point_load["case"]])
             load_cases = loads_by_dir.get(analysis_dir, None)
             if load_cases is None:
-                raise ReactionNotFoundError(f"Expand Point Reactions 2: {loads_by_dir=}")
+                raise ReactionNotFoundError(
+                    f"Expand Point Reactions 2: {loads_by_dir=}"
+                )
             # Typical condition from a frame member
             for case_name, magnitude in load_cases.items():
                 new_point_load = {
@@ -340,7 +342,9 @@ def expand_distributed_reactions(
             if load_cases is None:
                 load_cases = loads_by_dir.get(analysis_dir.title(), None)
             if load_cases is None:
-                raise ReactionNotFoundError(f"Expand Distributed Reactions: {transfer_reactions=}")
+                raise ReactionNotFoundError(
+                    f"Expand Distributed Reactions: {transfer_reactions=}"
+                )
                 # acc[index].append(null_dist_load)
                 # return acc
             if isinstance(load_cases, dict):
@@ -348,8 +352,8 @@ def expand_distributed_reactions(
                     if isinstance(load, list):
                         # Load from a wall
                         for subload in load:
-                            start_loc = dist_load['start_loc'] + subload['start_loc']
-                            distance = subload['end_loc'] - subload['start_loc']
+                            start_loc = dist_load["start_loc"] + subload["start_loc"]
+                            distance = subload["end_loc"] - subload["start_loc"]
                             end_loc = start_loc + distance
                             new_dist_load = {
                                 "start_magnitude": -subload["start_magnitude"]

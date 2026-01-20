@@ -112,8 +112,8 @@ def build_linear_wall_model(
             )
     for point_load in pm["loads"]["point_loads"]:
         for pt in point_load["expanded"]:
-            if pt['location'] > length:
-                pt['location'] = length
+            if pt["location"] > length:
+                pt["location"] = length
             try:
                 wall_model.add_point_load(
                     magnitude=pt["magnitude"],
