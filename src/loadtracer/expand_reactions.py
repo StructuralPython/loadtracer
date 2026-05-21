@@ -2,10 +2,9 @@ from typing import Optional, Union, Any
 from copy import deepcopy, copy
 import jsonchain
 
-
 class ReactionNotFoundError(Exception):
     pass
-
+#TODO: Add conditions to continue when transfer_source is nul
 
 def expand_reaction_loads(
     member_model: dict,
@@ -86,17 +85,20 @@ def expand_reaction_loads(
     'exclude_members': If a transfer load on the member_model includes a reaction from a member
         in 'exclude_members', that transfer load will be ignored.
     """
+    print(member_model['element_attributes']['tag'])
     # POINT LOADS
     ignored_reactions = {}
     new_model = deepcopy(member_model)
-    new_model["loads"]["point_loads"] = []
+    # new_model["loads"]["point_loads"] = []
     point_loads = member_model["loads"]["point_loads"]
     new_point_loads = new_model["loads"]["point_loads"]
     exclude_members = exclude_members or []
     # if not point_loads:
     #     point_loads = [null_point_load]
     for point_load in point_loads:
-        transfer_source = point_load.get("transfer_source", None)
+        transfer_source = point_load.get("transfer_source", None) or None
+        if transfer_source is None: 
+            continue
         transfer_reactions = member_reactions.get(transfer_source, None)
         tag = member_model["element_attributes"]["tag"]
         new_point_load = copy(point_load)
@@ -113,8 +115,8 @@ def expand_reaction_loads(
             continue
         transfer_index = point_load.get("transfer_reaction_index", 0)
         model_direction = point_load.get("direction", "gravity")
-        # try:
-        indexed_reactions = expand_point_reactions(
+        try:
+            indexed_reactions = expand_point_reactions(
             point_load,
             member_reactions,
             transfer_source,
@@ -122,33 +124,33 @@ def expand_reaction_loads(
             point_direction_mapping,
             null_point_load,
         )
-        # except ReactionNotFoundError:
-        #     if missing_reactions != "ignore":
-        #         raise ReactionNotFoundError(
-        #             f"Member {tag}: No reactions were found for {transfer_source}"
-        #         )
-        #     else:
-        #         ignored_reactions.setdefault(tag, [])
-        #         ignored_reactions[tag].append(transfer_source)
-        #         continue
-        # transfer_reactions = indexed_reactions.get(transfer_index, [null_point_load])
-        transfer_reactions = indexed_reactions.get(transfer_index, [])
+        except ReactionNotFoundError:
+            if missing_reactions != "ignore":
+                raise ReactionNotFoundError(
+                    f"Member {tag}: No reactions were found for {transfer_source}"
+                )
+            else:
+                ignored_reactions.setdefault(tag, [])
+                ignored_reactions[tag].append(transfer_source)
+                continue
+        transfer_reactions = indexed_reactions.get(transfer_index, [null_point_load])
+        # transfer_reactions = indexed_reactions.get(transfer_index, [])
         new_point_load["expanded"].extend(transfer_reactions)
         new_point_loads.append(new_point_load)
     tag = member_model["element_attributes"]["tag"]
     # DISTRIBUTED LOADS
-    new_model["loads"]["distributed_loads"] = []
+    # new_model["loads"]["distributed_loads"] = []
     new_dist_loads = new_model["loads"]["distributed_loads"]
     for dist_load in member_model["loads"]["distributed_loads"]:
         new_dist_load = copy(dist_load)
         new_dist_load.setdefault("expanded", [])
-        transfer_source = dist_load["transfer_source"]
-        if transfer_source in exclude_members:
+        transfer_source = dist_load.get('transfer_source') or None
+        if transfer_source in exclude_members or transfer_source is None:
             continue
         transfer_index = dist_load["transfer_reaction_index"]
         transfer_reactions = member_reactions.get(transfer_source, None)
         model_direction = dist_load.get("direction", None)
-        if not transfer_reactions or transfer_reactions == {0: {}}:
+        if transfer_index and (not transfer_reactions or transfer_reactions == {0: {}}):
             if missing_reactions == "raise":
                 raise ReactionNotFoundError(f"Reaction for {tag} not found.")
             else:
@@ -156,25 +158,25 @@ def expand_reaction_loads(
                 ignored_reactions[tag].append(transfer_source)
                 new_dist_loads.append(new_dist_load)
             continue
-        # try:
-        indexed_reactions = expand_distributed_reactions(
-            dist_load,
-            member_reactions,
-            transfer_source,
-            model_direction,
-            distributed_direction_mapping,
-            null_dist_load,
-        )
-        # except ReactionNotFoundError:
-        #     if missing_reactions != "ignore":
-        #         tag = member_model["element_attributes"]["tag"]
-        #         raise ReactionNotFoundError(
-        #             f"Member {tag}: No reactions were found for {transfer_source}"
-        #         )
-        #     else:
-        #         ignored_reactions.setdefault(tag, [])
-        #         ignored_reactions[tag].append(transfer_source)
-        #         continue
+        try:
+            indexed_reactions = expand_distributed_reactions(
+                dist_load,
+                member_reactions,
+                transfer_source,
+                model_direction,
+                distributed_direction_mapping,
+                null_dist_load,
+            )
+        except ReactionNotFoundError:
+            if missing_reactions != "ignore":
+                tag = member_model["element_attributes"]["tag"]
+                raise ReactionNotFoundError(
+                    f"Member {tag}: No reactions were found for {transfer_source}"
+                )
+            else:
+                ignored_reactions.setdefault(tag, [])
+                ignored_reactions[tag].append(transfer_source)
+                continue
         try:
             transfer_reactions = indexed_reactions[transfer_index]
         except:
