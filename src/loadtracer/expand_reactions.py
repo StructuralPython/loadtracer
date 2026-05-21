@@ -85,7 +85,6 @@ def expand_reaction_loads(
     'exclude_members': If a transfer load on the member_model includes a reaction from a member
         in 'exclude_members', that transfer load will be ignored.
     """
-    print(member_model['element_attributes']['tag'])
     # POINT LOADS
     ignored_reactions = {}
     new_model = deepcopy(member_model)

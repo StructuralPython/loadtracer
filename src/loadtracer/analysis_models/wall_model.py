@@ -86,8 +86,13 @@ def build_linear_wall_model(
     )
     length = pm["element_attributes"]["length"]
     for dist_load in pm["loads"]["distributed_loads"]:
-        for dt in dist_load["expanded"]:
-            end_loc = dt["end_loc"]
+        for dt in dist_load.get("expanded", []):
+            try:
+                end_loc = dt["end_loc"]
+            except (TypeError, KeyError) as e:
+                print(f"{dist_load=}")
+                raise e
+                
             if end_loc > length:
                 end_loc = length
             # if length < end_loc:
@@ -111,7 +116,7 @@ def build_linear_wall_model(
                 dir="Fy",
             )
     for point_load in pm["loads"]["point_loads"]:
-        for pt in point_load["expanded"]:
+        for pt in point_load.get("expanded", []):
             if pt["location"] > length:
                 pt["location"] = length
             try:

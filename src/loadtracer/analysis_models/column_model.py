@@ -72,7 +72,7 @@ def build_column_model(pm: dict) -> cc.ConcentricColumn:
         reverse_reaction_sign=True,
     )
     for point_load in pm["loads"]["point_loads"]:
-        for pt_component in point_load["expanded"]:
+        for pt_component in point_load.get("expanded", []):
             column.add_point_load(
                 pt_component["magnitude"],
                 pt_component["location"],

@@ -106,7 +106,7 @@ def build_pynite_frame_model(
     # Add loads
     load_cases = set()
     for dist_load in pm["loads"]["distributed_loads"]:
-        for expansion in dist_load["expanded"]:
+        for expansion in dist_load.get("expanded", []):
             load_cases.add(expansion["case"])
             model.add_member_dist_load(
                 pm["element_attributes"]["tag"],
@@ -119,7 +119,7 @@ def build_pynite_frame_model(
             )
 
     for point_load in pm["loads"]["point_loads"]:
-        for expansion in point_load["expanded"]:
+        for expansion in point_load.get("expanded", []):
             load_cases.add(expansion["case"])
             model.add_member_pt_load(
                 pm["element_attributes"]["tag"],
