@@ -27,8 +27,9 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         python -m pip install uv
-        python -m uv pip install .
-        python -m uv pip install black
+        python -m uv pip install --system --no-sources .
+        python -m uv pip install --system pytest
+        python -m uv pip install --system black
     - name: Test with pytest
       run: |
         pytest

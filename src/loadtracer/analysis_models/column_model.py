@@ -62,10 +62,13 @@ class PointColumn(AbstractAnalysisModel):
 
 def build_column_model(pm: dict) -> cc.ConcentricColumn:
     """
-    Returns a LinearWallModel based on the data within 'pm'
+    Returns a ConcentricColumn based on the data within 'pm'.
+
+    A concentric column carries the sum of its loads, so distributed loads
+    (e.g. from a wall above) are added as their resultants.
     """
     column = cc.ConcentricColumn(
-        height=pm["element_attributes"]["height"],
+        height=pm["element_attributes"].get("height"),
         gravity_dir="Fx",
         strong_axis_dir="Fy",
         weak_axis_dir="Fz",
@@ -79,5 +82,12 @@ def build_column_model(pm: dict) -> cc.ConcentricColumn:
                 pt_component["case"],
                 pt_component["dir"],
             )
-            # column.add_point_load(**pt_component)
+    for dist_load in pm["loads"]["distributed_loads"]:
+        for dt in dist_load.get("expanded", []):
+            resultant = (
+                (dt["start_magnitude"] + dt["end_magnitude"])
+                / 2
+                * (dt["end_loc"] - dt["start_loc"])
+            )
+            column.add_point_load(resultant, 0.0, dt["case"], dt["dir"])
     return column

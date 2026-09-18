@@ -1,389 +1,343 @@
-from typing import Optional, Union, Any
-from copy import deepcopy, copy
-import jsonchain
+from typing import Optional
+from copy import deepcopy
 
-class ReactionNotFoundError(Exception):
-    pass
-#TODO: Add conditions to continue when transfer_source is nul
+from .errors import ReactionNotFoundError, InvalidPapermodelError
+
+MISSING_REACTIONS_OPTIONS = ("raise", "ignore")
+
 
 def expand_reaction_loads(
     member_model: dict,
     member_reactions: dict,
     distributed_direction_mapping: dict,
     point_direction_mapping: dict,
-    null_point_load: dict,
-    null_dist_load: dict,
     missing_reactions: str = "raise",
     exclude_members: Optional[list[str]] = None,
 ) -> tuple[dict, dict]:
     """
-    Returns a copy of 'member_model' with all reaction load transfers
-    replaced by their load components as described in the 'reactions'
-    dict.
+    Returns a tuple of a copy of 'member_model' with the "expanded" load components
+    of every transfer load populated from the reactions of its source member, and
+    a dict of the reactions that were ignored (keyed by the tag of 'member_model',
+    only populated when 'missing_reactions' is "ignore").
+
+    Loads without a 'transfer_source' (e.g. occupancy loads) are copied unchanged.
 
     'member_model': A member dictionary as output from papermodels
-        The member dictionary may have point or distributed loads with
-        occupancy values assigned. If no occupancy values are assigned
-        then no changes occur to the member model.
-    'member_reactions': a dictionary of nodal reactions from a member analysis
-        The order of node reactions is assumed to be in geometric order
-        (i.e. order of appearance in local x-ordinates). Therefore the names
-        of each node should be irrelevant to the mapping since they will
-        be assigned by numerical index.
+    'member_reactions': a dictionary of the reactions of the members analysed
+        so far, keyed by member tag and then by support index. The support
+        indexes match the 'transfer_reaction_index' of the transfer loads.
+        Reactions are the forces on the supports so the load components have
+        the opposite sign.
         e.g.
         {
             'member_name': {
-                'node_id0': {
-                    'load_dir1': {
-                        'component1': 12.3,
-                        'component2': 14.5,
-                        'component3': 9.4,
-                    },
-                    'load_dir2': {
-                        'component1': 43.2,
-                        'component2': 34.2,
-                        'component3': 13.4,
-                    },
-                    ...
-                },
-                'node_id1': {
-                    'load_dir1': {
-                        'component1': 12.3,
-                        'component2': 14.5,
-                        'component3': 9.4,
-                    },
-                    'load_dir2': {
-                        'component1': 43.2,
-                        'component2': 34.2,
-                        'component3': 13.4,
-                    },
-                    ...
-                }, ...
+                0: {'FY': {'D': -12.3, 'L': -14.5}, 'FX': {...}, ...},
+                1: {'FY': {'D': -43.2, 'L': -34.2}, 'FX': {...}, ...},
+            },
+            'wall_name': {
+                0: {'FY': {'D': [dist_load, ...], 'L': [dist_load, ...]}},
             },
         }
-
+        A support with no reaction in a direction or load case (e.g. a member
+        with no loads) contributes no load components.
     'distributed_direction_mapping' / 'point_direction_mapping':
-        A dictionary mapping of the names of the load directions
-        from papermodels (i.e. 'gravity', 'inplane', 'out_of_plane')
-        and the reaction directions they should map from the node reactions.
-
-        The mapping value can be either a single string or a list of values, e.g.
-
-        {'gravity': ["FY"]} - This will only apply the FY reaction load components
-            from the node_reactions. If this dictionary is passed as a distributed
-            direction mapping, then the FY value will be applied as both the
-            'start_magnitude' and 'end_magnitude' value of a distributed load.
-            If it is for a point load mapping, then it will apply to the magnitude
-
-        {'gravity': ["FY", "MZ"]} - This will apply both the FY and MZ reaction
-        components as node reactions. If this is passed as a distributed direction
-        mapping, a distributed moment load would be created in addition to a distributed
-        'FY' load.
-    'null_point_load': A valid null point load to be applied as a reaction in the event no loads have been applied
-    'null_dist_load': A valid null dist load to be applied as a reaction in the event no loads have been applied
-    'missing_reactions': one of either 'raise' or 'ignore'
-    'exclude_members': If a transfer load on the member_model includes a reaction from a member
-        in 'exclude_members', that transfer load will be ignored.
+        A dictionary mapping the names of the load directions from papermodels
+        (i.e. 'gravity', 'inplane', 'out_of_plane') to the list of reaction
+        directions to apply from the source reactions.
+        e.g. {'gravity': ["FY"]} or {'gravity': ["FY", "MZ"]}
+    'missing_reactions': one of either 'raise' or 'ignore'. The reactions of a
+        source member are missing when the source was not analysed (or failed)
+        or does not have the 'transfer_reaction_index'.
+    'exclude_members': Transfer loads from these members (or from the
+        sub-elements of these members, e.g. "J1.0-3" for "J1.0") are removed.
     """
-    # POINT LOADS
+    if missing_reactions not in MISSING_REACTIONS_OPTIONS:
+        raise ValueError(
+            f"missing_reactions must be one of {MISSING_REACTIONS_OPTIONS}, "
+            f"not {missing_reactions!r}"
+        )
+    tag = member_model["element_attributes"]["tag"]
+    exclude_members = set(exclude_members or [])
     ignored_reactions = {}
     new_model = deepcopy(member_model)
-    # new_model["loads"]["point_loads"] = []
-    point_loads = member_model["loads"]["point_loads"]
-    new_point_loads = new_model["loads"]["point_loads"]
-    exclude_members = exclude_members or []
-    # if not point_loads:
-    #     point_loads = [null_point_load]
-    for point_load in point_loads:
-        transfer_source = point_load.get("transfer_source", None) or None
-        if transfer_source is None: 
-            continue
-        transfer_reactions = member_reactions.get(transfer_source, None)
-        tag = member_model["element_attributes"]["tag"]
-        new_point_load = copy(point_load)
-        new_point_load.setdefault("expanded", [])
-        if exclude_members is not None and transfer_source in exclude_members:
-            continue
-        if not transfer_reactions or transfer_reactions == {0: {}}:
-            if missing_reactions == "raise":
-                raise ReactionNotFoundError(f"Reaction for {tag} not found.")
-            else:
-                ignored_reactions.setdefault(tag, [])
-                ignored_reactions[tag].append(transfer_source)
-                new_point_loads.append(new_point_load)
-            continue
-        transfer_index = point_load.get("transfer_reaction_index", 0)
-        model_direction = point_load.get("direction", "gravity")
-        try:
-            indexed_reactions = expand_point_reactions(
-            point_load,
-            member_reactions,
-            transfer_source,
-            model_direction,
-            point_direction_mapping,
-            null_point_load,
-        )
-        except ReactionNotFoundError:
-            if missing_reactions != "ignore":
-                raise ReactionNotFoundError(
-                    f"Member {tag}: No reactions were found for {transfer_source}"
-                )
-            else:
-                ignored_reactions.setdefault(tag, [])
-                ignored_reactions[tag].append(transfer_source)
+
+    for load_type, direction_mapping, expand in (
+        ("point_loads", point_direction_mapping, expand_point_reactions),
+        ("distributed_loads", distributed_direction_mapping, expand_distributed_reactions),
+    ):
+        new_loads = []
+        for load in new_model["loads"][load_type]:
+            transfer_source = load.get("transfer_source") or None
+            if transfer_source is None:
+                new_loads.append(load)
                 continue
-        transfer_reactions = indexed_reactions.get(transfer_index, [null_point_load])
-        # transfer_reactions = indexed_reactions.get(transfer_index, [])
-        new_point_load["expanded"].extend(transfer_reactions)
-        new_point_loads.append(new_point_load)
-    tag = member_model["element_attributes"]["tag"]
-    # DISTRIBUTED LOADS
-    # new_model["loads"]["distributed_loads"] = []
-    new_dist_loads = new_model["loads"]["distributed_loads"]
-    for dist_load in member_model["loads"]["distributed_loads"]:
-        new_dist_load = copy(dist_load)
-        new_dist_load.setdefault("expanded", [])
-        transfer_source = dist_load.get('transfer_source') or None
-        if transfer_source in exclude_members or transfer_source is None:
-            continue
-        transfer_index = dist_load["transfer_reaction_index"]
-        transfer_reactions = member_reactions.get(transfer_source, None)
-        model_direction = dist_load.get("direction", None)
-        if transfer_index and (not transfer_reactions or transfer_reactions == {0: {}}):
-            if missing_reactions == "raise":
-                raise ReactionNotFoundError(f"Reaction for {tag} not found.")
-            else:
-                ignored_reactions.setdefault(tag, [])
-                ignored_reactions[tag].append(transfer_source)
-                new_dist_loads.append(new_dist_load)
-            continue
-        try:
-            indexed_reactions = expand_distributed_reactions(
-                dist_load,
-                member_reactions,
-                transfer_source,
-                model_direction,
-                distributed_direction_mapping,
-                null_dist_load,
-            )
-        except ReactionNotFoundError:
-            if missing_reactions != "ignore":
-                tag = member_model["element_attributes"]["tag"]
-                raise ReactionNotFoundError(
-                    f"Member {tag}: No reactions were found for {transfer_source}"
-                )
-            else:
-                ignored_reactions.setdefault(tag, [])
-                ignored_reactions[tag].append(transfer_source)
+            if is_excluded(transfer_source, exclude_members):
                 continue
-        try:
-            transfer_reactions = indexed_reactions[transfer_index]
-        except:
-            raise ValueError(
-                f"Problem with {tag}. {indexed_reactions=} {member_reactions[tag]=}"
+            reaction = get_indexed_reaction(
+                member_reactions, transfer_source, load.get("transfer_reaction_index")
             )
-        new_dist_load["expanded"] += transfer_reactions
-        new_dist_loads.append(new_dist_load)
+            if reaction is None:
+                if missing_reactions == "raise":
+                    raise ReactionNotFoundError(
+                        f"No reactions were found for {transfer_source} (reaction index "
+                        f"{load.get('transfer_reaction_index')!r}).",
+                        tag,
+                    )
+                ignored_reactions.setdefault(tag, []).append(transfer_source)
+                new_loads.append(load)
+                continue
+            model_direction = load.get("direction", "gravity")
+            load.setdefault("expanded", [])
+            for analysis_dir in direction_mapping[model_direction]:
+                load_cases = reaction.get(analysis_dir, {})
+                load["expanded"].extend(expand(load, load_cases, analysis_dir, tag))
+            new_loads.append(load)
+        new_model["loads"][load_type] = new_loads
     return new_model, ignored_reactions
 
 
-def expand_point_reactions(
-    point_load,
-    member_reactions,
-    transfer_source,
-    model_direction,
-    point_direction_mapping,
-    null_point_load: dict,
-) -> dict:
+def is_excluded(transfer_source: str, exclude_members: set[str]) -> bool:
     """
-    Returns a dictionary of load point reactions structured the following way:
-
-    1. Keyed by reaction index (reaction indexes are assumed to be solve in x-positive
-        bias direction
+    Returns True if 'transfer_source' or its parent element (the part of a
+    sub-element tag before the last "-", e.g. "J1.0" of "J1.0-3") is in
+    'exclude_members'.
+    """
+    parent, sep, index = transfer_source.rpartition("-")
+    return transfer_source in exclude_members or (
+        bool(sep) and index.isdigit() and parent in exclude_members
     )
-    Values are a list of
+
+
+def get_indexed_reaction(
+    member_reactions: dict, transfer_source: str, transfer_index
+) -> Optional[dict]:
+    """
+    Returns the reactions of 'transfer_source' at 'transfer_index' or None if
+    they are not available. A missing 'transfer_index' ("" or None) means the
+    first reaction.
+    """
+    source_reactions = member_reactions.get(transfer_source)
+    if source_reactions is None:
+        return None
+    match transfer_index:
+        case None | "":
+            transfer_index = 0
+        case int():
+            pass
+        case str() if transfer_index.isdigit():
+            transfer_index = int(transfer_index)
+        case _:
+            return None
+    return source_reactions.get(transfer_index)
+
+
+def expand_point_reactions(
+    point_load: dict, load_cases: dict, analysis_dir: str, tag: str
+) -> list[dict]:
+    """
+    Returns a list of point load components (one per load case) at the location
+    of 'point_load' for the reactions in 'load_cases' ({case: reaction}).
 
     Example output:
 
-    {
-        0: [
-            {
-                "magnitude": magnitude_value,
-                "location": location_value,
-                "case": case_value,
-                "dir": analysis_dir_value
-            },
-            {
-                "magnitude": magnitude_value,
-                "location": location_value,
-                "case": case_value,
-                "dir": analysis_dir_value
-            },
-        ],
-        1: [
-            {
-                "magnitude": magnitude_value,
-                "location": location_value,
-                "case": case_value,
-                "dir": analysis_dir_value
-            },
-            {
-                "magnitude": magnitude_value,
-                "location": location_value,
-                "case": case_value,
-                "dir": analysis_dir_value
-            },
-        ]
-    }
+    [
+        {"magnitude": 12.3, "location": 2.5, "case": "D", "dir": "FY"},
+        {"magnitude": 14.5, "location": 2.5, "case": "L", "dir": "FY"},
+    ]
     """
-    transfer_reactions = member_reactions.get(transfer_source, None)
-    if transfer_reactions is None:
-        raise ReactionNotFoundError(f"Expand Point Reactions: {transfer_reactions=}")
-    acc = {}
-    for index, node_id in enumerate(transfer_reactions):
-        acc[index] = []
-        loads_by_dir = transfer_reactions[node_id]
-        analysis_dirs = point_direction_mapping[model_direction]
-        for analysis_dir in analysis_dirs:
-            # load_cases = loads_by_dir.get(analysis_dir, [null_point_load["case"]])
-            load_cases = loads_by_dir.get(analysis_dir, None)
-            if load_cases is None:
-                raise ReactionNotFoundError(
-                    f"Expand Point Reactions 2: {loads_by_dir=}"
+    acc = []
+    for case_name, reaction in load_cases.items():
+        match reaction:
+            case int() | float():
+                # From a frame member or a column
+                magnitude = -reaction
+            case list():
+                # From a wall: the resultant of its distributed reactions
+                magnitude = -sum(
+                    (r["start_magnitude"] + r["end_magnitude"])
+                    / 2
+                    * (r["end_loc"] - r["start_loc"])
+                    for r in reaction
                 )
-            # Typical condition from a frame member
-            for case_name, magnitude in load_cases.items():
-                new_point_load = {
-                    "magnitude": -1 * magnitude,
-                    "location": point_load["location"],
-                    "case": case_name,
-                    "dir": analysis_dir,
-                }
-                acc[index].append(new_point_load)
-    if not acc:
-        # raise ReactionNotFoundError(f"{transfer_reactions=}")
-        acc[0] = []
-        # acc[0].append(null_point_load)
+            case _:
+                raise InvalidPapermodelError(
+                    f"Unrecognized reaction from {point_load['transfer_source']}: "
+                    f"{reaction!r}",
+                    tag,
+                )
+        acc.append(
+            {
+                "magnitude": magnitude,
+                "location": point_load["location"],
+                "case": case_name,
+                "dir": analysis_dir,
+            }
+        )
     return acc
 
 
 def expand_distributed_reactions(
-    dist_load,
-    member_reactions,
-    transfer_source,
-    model_direction,
-    distributed_direction_mapping,
-    null_dist_load: dict,
-) -> dict:
+    dist_load: dict, load_cases: dict, analysis_dir: str, tag: str
+) -> list[dict]:
     """
-    Returns a dictionary of load distributed reactions structured the following way:
+    Returns a list of distributed load components for the reactions in
+    'load_cases' ({case: reaction}) applied over the extents of 'dist_load'.
 
-    1. Keyed by reaction index (reaction indexes are assumed to be solve in x-positive
-        bias direction
-    )
-    Value for the key is a list of dicts representing complete
-    distributed load descriptions.
+    A reaction from a frame member with a linear reaction (a force per unit
+    length) is applied over the extents of 'dist_load', scaled by its
+    magnitudes. A reaction from a wall (a list of distributed loads along the
+    wall) is mapped onto the member with map_wall_reaction.
 
     Example output:
 
-    {
-        0: [ # reaction index
-            {
-                "start_magnitude": magnitude_value,
-                "end_magnitude": magnitude_value,
-                "start_loc": start_loc_value,
-                "end_loc": end_loc_value,
-                "case": case_value,
-                "dir": analysis_direction_value,
-            },
-            {
-                "start_magnitude": magnitude_value,
-                "end_magnitude": magnitude_value,
-                "start_loc": start_loc_value,
-                "end_loc": end_loc_value,
-                "case": case_value,
-                "dir": analysis_direction_value,
-            },
-            ...
-        ],
+    [
+        {
+            "start_magnitude": 1.2,
+            "end_magnitude": 1.2,
+            "start_loc": 0.0,
+            "end_loc": 4.5,
+            "case": "D",
+            "dir": "FY",
+        },
         ...
-        1: [ # reaction index
-            {
-                "start_magnitude": magnitude_value,
-                "end_magnitude": magnitude_value,
-                "start_loc": start_loc_value,
-                "end_loc": end_loc_value,
-                "case": case_value,
-                "dir": analysis_direction_value,
-            },
-            {
-                "start_magnitude": magnitude_value,
-                "end_magnitude": magnitude_value,
-                "start_loc": start_loc_value,
-                "end_loc": end_loc_value,
-                "case": case_value,
-                "dir": analysis_direction_value,
-            },
-            ...
-        ],
-        ...
-    }
+    ]
     """
-    transfer_reactions = member_reactions.get(transfer_source, None)
-    assert transfer_reactions is not None
-    acc = {}
-    for index, node_id in enumerate(transfer_reactions):
-        acc[index] = []
-        # TODO: Deal with this hard-coded key from pynite_tools
-        loads_by_dir = transfer_reactions[node_id]
-        analysis_dirs = distributed_direction_mapping[model_direction]
-        for analysis_dir in analysis_dirs:
-            # HACK: To Fix
-            load_cases = loads_by_dir.get(analysis_dir, None)
-            if load_cases is None:
-                load_cases = loads_by_dir.get(analysis_dir.title(), None)
-            if load_cases is None:
-                raise ReactionNotFoundError(
-                    f"Expand Distributed Reactions: {transfer_reactions=}"
+    acc = []
+    for case_name, reaction in load_cases.items():
+        match reaction:
+            case int() | float():
+                acc.append(
+                    {
+                        "start_magnitude": -reaction * dist_load["start_magnitude"],
+                        "end_magnitude": -reaction * dist_load["end_magnitude"],
+                        "start_loc": dist_load["start_loc"],
+                        "end_loc": dist_load["end_loc"],
+                        "case": case_name,
+                        "dir": analysis_dir,
+                    }
                 )
-                # acc[index].append(null_dist_load)
-                # return acc
-            if isinstance(load_cases, dict):
-                for case_name, load in load_cases.items():
-                    if isinstance(load, list):
-                        # Load from a wall
-                        for subload in load:
-                            start_loc = dist_load["start_loc"] + subload["start_loc"]
-                            distance = subload["end_loc"] - subload["start_loc"]
-                            end_loc = start_loc + distance
-                            new_dist_load = {
-                                "start_magnitude": -subload["start_magnitude"]
-                                * dist_load["start_magnitude"],
-                                "end_magnitude": -subload["end_magnitude"]
-                                * dist_load["end_magnitude"],
-                                "start_loc": start_loc,
-                                "end_loc": end_loc,
-                                "case": case_name,
-                                "dir": analysis_dir,
-                            }
-                            acc[index].append(new_dist_load)
-                    else:
-                        # Load from a frame member
-                        new_dist_load = {
-                            "start_magnitude": -1 * load * dist_load["start_magnitude"],
-                            "end_magnitude": -1 * load * dist_load["end_magnitude"],
-                            "start_loc": dist_load["start_loc"],
-                            "end_loc": dist_load["end_loc"],
-                            "case": case_name,
-                            "dir": analysis_dir,
-                        }
-                        acc[index].append(new_dist_load)
-            elif isinstance(load_cases, list):
-                # When the member is a loadbearing_wall and has a list of reactions
-                for case_dist_load in load_cases:
-                    new_dist_load = copy(case_dist_load)
-                    # Should have all other required keys
-                    # Need to update direction with analysis dir
-                    new_dist_load.update({"dir": analysis_dir})
-                    acc[index].append(new_dist_load)
+            case list():
+                acc.extend(
+                    map_wall_reaction(dist_load, reaction, case_name, analysis_dir)
+                )
+            case _:
+                raise InvalidPapermodelError(
+                    f"Unrecognized reaction from {dist_load['transfer_source']}: "
+                    f"{reaction!r}",
+                    tag,
+                )
     return acc
+
+
+def map_wall_reaction(
+    dist_load: dict, wall_reaction: list[dict], case_name: str, analysis_dir: str
+) -> list[dict]:
+    """
+    Returns the load components on the receiving member from the distributed
+    reactions of a wall ('wall_reaction', in the wall's local coordinates).
+
+    The 'transfer_source_start_extent' to 'transfer_source_end_extent' of
+    'dist_load' (the part of the wall that is over the receiving member) is
+    mapped onto its 'start_loc' to 'end_loc'. When the two lengths differ (e.g.
+    from rounding in the drawing) the magnitudes are scaled so that the force
+    is unchanged.
+
+    The reaction taken from the wall is the part within the
+    'transfer_source_cell' of 'dist_load' (see assign_wall_transfer_cells) so
+    that the parts of the wall that are not over any member (e.g. a wall that
+    is longer than the wall below it) are not lost. Those parts map to just
+    beyond 'start_loc'/'end_loc'. When 'dist_load' has no source extents, the
+    whole wall bears on the member starting at 'start_loc'.
+    """
+    t0, t1 = dist_load["start_loc"], dist_load["end_loc"]
+    match (
+        dist_load.get("transfer_source_start_extent"),
+        dist_load.get("transfer_source_end_extent"),
+    ):
+        case (int() | float() as s0, int() | float() as s1) if s1 > s0:
+            scale = (t1 - t0) / (s1 - s0)
+            c0, c1 = dist_load.get("transfer_source_cell", (s0, s1))
+        case _:
+            s0, scale = 0.0, 1.0
+            c0, c1 = float("-inf"), float("inf")
+
+    acc = []
+    for subload in wall_reaction:
+        x1, x2 = subload["start_loc"], subload["end_loc"]
+        a, b = max(x1, c0), min(x2, c1)
+        if b <= a:
+            continue
+        w1, w2 = subload["start_magnitude"], subload["end_magnitude"]
+        wa = w1 + (w2 - w1) * (a - x1) / (x2 - x1)
+        wb = w1 + (w2 - w1) * (b - x1) / (x2 - x1)
+        acc.append(
+            {
+                "start_magnitude": -wa * dist_load["start_magnitude"] / scale,
+                "end_magnitude": -wb * dist_load["end_magnitude"] / scale,
+                "start_loc": t0 + (a - s0) * scale,
+                "end_loc": t0 + (b - s0) * scale,
+                "case": case_name,
+                "dir": analysis_dir,
+            }
+        )
+    return acc
+
+
+def assign_wall_transfer_cells(papermodels: dict[str, dict]) -> dict[str, list[str]]:
+    """
+    Returns a dict of issues keyed by the tag of the wall they concern.
+    Mutates the distributed loads in 'papermodels' ({tag: papermodel}) whose
+    transfer source is a wall by adding a "transfer_source_cell": [start, end].
+
+    The length of each wall is divided into one cell per load that it transfers
+    (in the order of the loads' source extents): the first cell has no start,
+    the last cell has no end and the gap between two adjacent source extents
+    is divided at its midpoint. The whole
+    reaction of the wall is then transferred exactly once.
+
+    Source extents that overlap mean that more than one member supports the
+    same part of the wall. How the load divides between them depends on their
+    stiffness, which is not known, so the overlapping part is transferred to
+    each of them and an issue is reported.
+    """
+    walls = {
+        tag
+        for tag, pm in papermodels.items()
+        if pm["element_attributes"].get("orientation") == "vertical"
+        and pm["element_attributes"].get("reaction_type") == "linear"
+    }
+    loads_by_wall = {}
+    for receiver, pm in papermodels.items():
+        for dist_load in pm["loads"]["distributed_loads"]:
+            source = dist_load.get("transfer_source")
+            match (
+                dist_load.get("transfer_source_start_extent"),
+                dist_load.get("transfer_source_end_extent"),
+            ):
+                case (int() | float() as s0, int() | float() as s1) if (
+                    source in walls and s1 > s0
+                ):
+                    loads_by_wall.setdefault(source, []).append((s0, s1, receiver, dist_load))
+
+    issues = {}
+    for wall, loads in loads_by_wall.items():
+        loads.sort(key=lambda load: (load[0], load[1]))
+        cells = [[s0, s1] for s0, s1, _, _ in loads]
+        # Open-ended so that reactions beyond the ends of the wall (e.g. from the
+        # minimum spread of a point load near an end) are also transferred
+        cells[0][0] = float("-inf")
+        cells[-1][1] = float("inf")
+        for (prev, cell), (prev_load, load) in zip(
+            zip(cells, cells[1:]), zip(loads, loads[1:])
+        ):
+            if prev_load[1] <= load[0]:
+                prev[1] = cell[0] = (prev_load[1] + load[0]) / 2
+            else:
+                issues.setdefault(wall, []).append(
+                    f"{prev_load[2]} and {load[2]} both support {wall} from "
+                    f"{load[0]} to {min(prev_load[1], load[1])}; the load on that "
+                    "part of the wall was applied to both."
+                )
+        for cell, (_, _, _, dist_load) in zip(cells, loads):
+            dist_load["transfer_source_cell"] = cell
+    return issues

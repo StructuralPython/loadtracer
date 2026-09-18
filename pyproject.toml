@@ -8,7 +8,7 @@ authors = [
 requires-python = ">=3.12"
 dependencies = [
     "papermodels>=0.19.0",
-    "loadbearing-wall>=0.3.0",
+    "loadbearing-wall>=0.5.0",
     "PyniteFEA>=1.6.2",
     "safer>=5.1.0",
     "jsonchain>=0.5.0",
@@ -24,5 +24,10 @@ build-backend = "flit_core.buildapi"
 dev = [
     "black>=25.11.0",
     "ipykernel>=6.29.5",
+    "nbconvert>=7.17.1",
     "pytest>=8.4.0",
 ]
+
+[tool.uv.sources]
+# Develop against the sibling papermodels checkout. CI installs with --no-sources.
+papermodels = { path = "../papermodels", editable = true }

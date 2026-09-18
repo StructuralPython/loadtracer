@@ -5,7 +5,7 @@ import safer
 
 
 class ConcentricColumn(BaseModel):
-    height: float
+    height: Optional[float] = None
     point_loads: Optional[list[dict]] = None
     gravity_dir: str = "z"
     strong_axis_dir: str = "y"
