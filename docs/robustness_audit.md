@@ -94,8 +94,12 @@ that result was wrong.
   modelled.
 - **Support fixity.** The first support is a pin and the others are rollers,
   unless a support dict has a `fixity` (`"pin"`, `"roller"`, `"fixed"`).
-- **Stiffness.** Beams use a unit, uniform EI. Continuous beams therefore
-  distribute load as a prismatic member would.
+- **Stiffness and continuity.** Beams use a unit, uniform EI, and a beam over
+  more than two supports is continuous. Loads are distributed as a prismatic
+  continuous member would distribute them, which can differ from simple-span
+  hand calculations. A heavily loaded long span can lift the end of a short
+  adjacent span: `FB3.1` in `sketch_to_scale.pdf` (spans 13.4 + 4.9) puts 59.6
+  of uplift into `CT3.2` in the L case.
 - **Walls.** A wall's reaction maps onto the member below in the same
   direction, from source extents to target extents. Both are measured from
   each member's positive-x end, which is the papermodels convention. Walls use

@@ -6,6 +6,7 @@ Requires a papermodels (>= 0.21) checkout next to this repository
 """
 
 import contextlib
+from collections import defaultdict
 import io
 import math
 import pathlib
@@ -15,7 +16,7 @@ from decimal import Decimal
 import pytest
 
 import papermodels
-from conservation import applied_occupancy_totals, bottom_reaction_totals
+from conservation import applied_occupancy_totals, bottom_reaction_totals, resultant
 from loadtracer import LoadTracerWarning
 from loadtracer.load_tracer import LoadTracer
 
@@ -51,17 +52,20 @@ def rundown(request) -> tuple[str, LoadTracer]:
     name = request.param
     if name in PAPERMODELS_FAILURES:
         pytest.xfail(PAPERMODELS_FAILURES[name])
-    graph = load_graph(name)
+    return name, run(load_graph(name))
+
+
+def run(graph, **kwargs) -> LoadTracer:
     occupancies = {
         lg.occupancy: {"D": 1.0, "L": 2.5}
         for lg in graph.loading_geometries
         if getattr(lg, "occupancy", None)
     } or {"none": {"D": 1.0}}
-    lt = LoadTracer(geometry_graph=graph, occupancies=occupancies)
+    lt = LoadTracer(geometry_graph=graph, occupancies=occupancies, **kwargs)
     with contextlib.redirect_stdout(io.StringIO()), warnings.catch_warnings():
         warnings.simplefilter("ignore", LoadTracerWarning)
         lt.execute_analyses()
-    return name, lt
+    return lt
 
 
 def test_every_member_is_analysed(rundown):
@@ -83,3 +87,28 @@ def test_load_is_conserved(rundown):
     assert applied.keys() == bottom.keys()
     for case in applied:
         assert math.isclose(applied[case], bottom[case], rel_tol=1e-6), case
+
+
+def test_converted_joist_loads_replace_the_joist_point_loads_exactly(rundown):
+    _, lt = rundown
+    for pm in lt.expanded_pm.values():
+        replaced, replacing = defaultdict(float), defaultdict(float)
+        for load in pm["loads"].get("converted_point_loads", []):
+            parent = load["transfer_source"].rpartition("-")[0]
+            for component in load["expanded"]:
+                replaced[(parent, component["case"])] += component["magnitude"]
+        arrays = {parent for parent, _ in replaced}
+        for load in pm["loads"]["distributed_loads"] + pm["loads"]["point_loads"]:
+            if load.get("transfer_source") in arrays:
+                for component in load.get("expanded", []):
+                    replacing[(load["transfer_source"], component["case"])] += resultant(component)
+        assert replacing.keys() == replaced.keys()
+        for key, total in replaced.items():
+            assert math.isclose(replacing[key], total, rel_tol=1e-9, abs_tol=1e-12), key
+
+
+def test_point_and_distributed_joist_loads_carry_the_same_total_load(rundown):
+    name, distributed = rundown
+    point = run(distributed.geometry_graph, joist_loads="point")
+    for case, total in bottom_reaction_totals(point).items():
+        assert math.isclose(bottom_reaction_totals(distributed)[case], total, rel_tol=1e-6)

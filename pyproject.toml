@@ -25,6 +25,7 @@ dev = [
     "black>=25.11.0",
     "ipykernel>=6.29.5",
     "nbconvert>=7.17.1",
+    "pandas>=3.0.6",
     "pytest>=8.4.0",
 ]
 

@@ -20,6 +20,7 @@ from .errors import (
     ReactionNotFoundError,  # noqa: F401 (re-exported for backwards compatibility)
 )
 from .expand_occupancies import expand_occupancy_loads
+from .joist_load_conversion import convert_joist_point_loads
 from .expand_reactions import (
     assign_wall_transfer_cells,
     expand_reaction_loads,
@@ -44,6 +45,15 @@ class LoadTracer(BaseModel, arbitrary_types_allowed=True):
     'on_error': "raise" or "collect". With "collect", a member that cannot be
         analysed is recorded in .errors and the rundown continues. Members that
         it supports then have missing reactions.
+    'joist_loads': "distributed" or "point". With "distributed", the point loads
+        from the joists of each joist array on a member are converted into one
+        distributed load (see joist_load_conversion). With "point", each joist
+        reaction is applied as a point load.
+    'joist_profile_rel_tol': The tolerance used to classify the joist loads as
+        uniform, increasing, decreasing or variable. It is relative: 0.10 is
+        10% of the mean line load.
+    'joist_variability_ratio': Joist loads that are "variable" and whose largest
+        line load is this many times the smallest raise a warning.
     """
 
     geometry_graph: "GeometryGraph"
@@ -59,6 +69,9 @@ class LoadTracer(BaseModel, arbitrary_types_allowed=True):
     )
     missing_reactions: Literal["raise", "ignore"] = "raise"
     on_error: Literal["raise", "collect"] = "raise"
+    joist_loads: Literal["distributed", "point"] = "distributed"
+    joist_profile_rel_tol: float = Field(default=0.10, ge=0.0, lt=1.0)
+    joist_variability_ratio: float = Field(default=2.0, gt=1.0)
     show_progress: bool = True
     models: Optional[dict] = None
     reactions: Optional[dict] = None
@@ -234,6 +247,16 @@ class LoadTracer(BaseModel, arbitrary_types_allowed=True):
             exclude_members=exclude_members,
         )
         self.ignored_reactions.update(ignored_reactions)
+        if self.joist_loads == "distributed" and not (
+            orientation == "vertical" and reaction_type == "point"
+        ):
+            convert_joist_point_loads(
+                expanded_papermodel,
+                joist_pms=self.expanded_pm,
+                occupancies=self.occupancies,
+                rel_tol=self.joist_profile_rel_tol,
+                variability_ratio=self.joist_variability_ratio,
+            )
         issues += conform_loads_to_member(expanded_papermodel)
         if issues:
             self.issues.setdefault(tag, []).extend(issues)
@@ -257,3 +280,46 @@ class LoadTracer(BaseModel, arbitrary_types_allowed=True):
 
         self.models[tag] = member_model.dump_model()
         self.reactions[tag] = member_model.get_reactions()
+
+    def converted_joist_loads(self, tag: Optional[str] = None) -> list[dict]:
+        """
+        Returns a list of rows, one per converted joist load and load case, for
+        comparing against hand calculations. Only the rows for member 'tag' are
+        returned when it is given.
+
+        Each row has: member, array, joists (count), case, dir, profile,
+        start_loc, end_loc, w_start, w_end (the line load), total, max_min_ratio,
+        and the trib width view: occupancy, pressure, trib_width_start,
+        trib_width_end, approximate (None when not available).
+        """
+        rows = []
+        for member, pm in (self.expanded_pm or {}).items():
+            if tag is not None and member != tag:
+                continue
+            for dist_load in pm["loads"]["distributed_loads"]:
+                if "converted_from" not in dist_load:
+                    continue
+                for component in dist_load["expanded"]:
+                    view = dist_load["trib_view"].get(component["case"], {})
+                    rows.append(
+                        {
+                            "member": member,
+                            "array": dist_load["transfer_source"],
+                            "joists": len(dist_load["converted_from"]),
+                            "case": component["case"],
+                            "dir": component["dir"],
+                            "profile": component["profile"],
+                            "start_loc": component["start_loc"],
+                            "end_loc": component["end_loc"],
+                            "w_start": component["start_magnitude"],
+                            "w_end": component["end_magnitude"],
+                            "total": component["point_load_total"],
+                            "max_min_ratio": component["max_min_ratio"],
+                            "occupancy": view.get("occupancy"),
+                            "pressure": view.get("pressure"),
+                            "trib_width_start": view.get("trib_width_start"),
+                            "trib_width_end": view.get("trib_width_end"),
+                            "approximate": view.get("approximate"),
+                        }
+                    )
+        return rows
