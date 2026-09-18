@@ -38,6 +38,36 @@ After a rundown:
 | `lt.errors[tag]` | Members that could not be analysed (with `on_error="collect"`) |
 | `lt.ignored_reactions[tag]` | Transfer loads whose source reactions were missing (with `missing_reactions="ignore"`) |
 
+### Joist loads as distributed loads
+
+A joist array from papermodels (e.g. `J1.0`) is analysed one joist at a time
+(`J1.0-0`, `J1.0-1`, ...), so the members under it receive one point load per
+joist. By default (`joist_loads="distributed"`), loadtracer replaces each run of
+joist point loads on a member with one distributed load over the run, in both
+`expanded_pm` and the analysis model. The total load is unchanged. The shape of
+the load depends on the joist reactions, divided by the width each joist carries:
+
+| Joist reactions | Distributed load |
+|---|---|
+| uniform (within `joist_profile_rel_tol`, default 10% of the mean) | uniform |
+| increasing or decreasing along the run | trapezoidal, fitted through the reactions |
+| anything else (e.g. peaking mid-run) | uniform, with a `JoistLoadVariabilityWarning` when the largest is `joist_variability_ratio` (default 2) or more times the smallest |
+
+`lt.converted_joist_loads()` returns one row per converted load and load case,
+giving the load as a line load and as an occupancy pressure over a trib width, for
+comparing against hand calculations (e.g. as a table with pandas):
+
+```python
+import pandas as pd
+pd.DataFrame(lt.converted_joist_loads("FB2.0"))
+#   member array  joists case  profile  start_loc  end_loc  w_start  w_end  ...  occupancy  pressure  trib_width_start  trib_width_end  approximate
+```
+
+The trib width is the line load divided by the pressure of the joists'
+occupancy. It is flagged `approximate` (with a `JoistTribWidthWarning`) when the
+joists carry more than one occupancy or other transferred loads. Use
+`joist_loads="point"` to apply each joist reaction as a point load.
+
 ### Options
 
 - `on_error="raise" | "collect"`: stop at the first member that fails, or record
@@ -52,6 +82,11 @@ After a rundown:
 Errors are subclasses of `loadtracer.LoadTracerError` and name the member they
 concern. See [docs/robustness_audit.md](docs/robustness_audit.md) for the input
 that loadtracer corrects, reports or rejects, and why.
+
+## Examples
+
+[Examples/](Examples/README.md) follows the papermodels examples through to the
+reactions at the foundation.
 
 ## Development
 
