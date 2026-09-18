@@ -124,6 +124,8 @@ that result was wrong.
 | U7 | pynite_tools | `extract_node_reactions` drops nodes whose reactions are all zero, which breaks index-based consumers (F5), and it rounds values to nearby integers. |
 | U8 | PyniteFEA | Fixed in 3.x: 1.6.2 (the version in the 0.5.1 lock) imported `pip._vendor.pkg_resources` in `__init__` and failed in environments without pip. The lock is now on 3.2.0. |
 | U9 | papermodels | `paper/pdf.py` calls `pikepdf.Stream.read_bytes`, which later pikepdf 10.x releases no longer have (it fails on 10.13, works on 10.0.2). papermodels doesn't bound its pikepdf version, so a fresh install can't read PDFs. loadtracer's lock holds pikepdf at 10.0.2. |
+| U10 | papermodels | papermodels' `Examples/Example 5/multi-page-plan.pdf` fails in `GeometryGraph.from_elements` → `collector_elements` (`geometry_graph.py:106`) with `KeyError: 'element'`: a graph node has no element (an edge refers to a tag that isn't a node). |
+| U11 | papermodels | papermodels' `Examples/Example 2`: the PDF tags a beam on page 2 `FB2.5`, but the graph names it `FB2.0`. The manual tags `FB1.14` and `CB0.10` are kept. |
 
 ## 7. Behaviour changes in 0.6.0
 

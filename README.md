@@ -53,8 +53,9 @@ the load depends on the joist reactions, divided by the width each joist carries
 | increasing or decreasing along the run | trapezoidal, fitted through the reactions |
 | anything else (e.g. peaking mid-run) | uniform, with a `JoistLoadVariabilityWarning` when the largest is `joist_variability_ratio` (default 2) or more times the smallest |
 
-`lt.converted_joist_loads()` returns a list of rows (one per converted load and load case) that describe each converted load as a line load and as an
-occupancy pressure over a trib width, for comparing against hand calculations:
+`lt.converted_joist_loads()` returns one row per converted load and load case,
+giving the load as a line load and as an occupancy pressure over a trib width, for
+comparing against hand calculations (e.g. as a table with pandas):
 
 ```python
 import pandas as pd
@@ -81,6 +82,11 @@ joists carry more than one occupancy or other transferred loads. Use
 Errors are subclasses of `loadtracer.LoadTracerError` and name the member they
 concern. See [docs/robustness_audit.md](docs/robustness_audit.md) for the input
 that loadtracer corrects, reports or rejects, and why.
+
+## Examples
+
+[Examples/](Examples/README.md) follows the papermodels examples through to the
+reactions at the foundation.
 
 ## Development
 
