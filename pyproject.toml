@@ -28,6 +28,13 @@ dev = [
     "pandas>=3.0.6",
     "pytest>=8.4.0",
 ]
+docs = [
+    "myst-nb>=1.1",
+    "shibuya>=2025.1",
+    "sphinx>=8.1",
+    "sphinx-copybutton>=0.5",
+    "sphinx-design>=0.6",
+]
 
 [tool.uv.sources]
 # Develop against the sibling papermodels checkout. CI installs with --no-sources.

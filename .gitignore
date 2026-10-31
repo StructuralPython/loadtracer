@@ -153,3 +153,7 @@ cython_debug/
 
 # loadtracer example outputs
 Examples/**/artifacts/
+
+# Sphinx docs
+docs/_build/
+docs/examples/notebooks/

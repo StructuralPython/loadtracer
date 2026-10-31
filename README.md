@@ -1,5 +1,7 @@
 # loadtracer
 
+Documentation: [loadtracer.structuralpython.com](https://loadtracer.structuralpython.com/)
+
 loadtracer takes a [papermodels](https://github.com/StructuralPython/papermodels)
 `GeometryGraph` and traces the loads through it. Each element is analysed in turn,
 from the top of the graph down, and its reactions are applied to the elements that
@@ -80,7 +82,7 @@ joists carry more than one occupancy or other transferred loads. Use
   this angle (degrees). A non-zero angle needs a `height` on each wall's annotation.
 
 Errors are subclasses of `loadtracer.LoadTracerError` and name the member they
-concern. See [docs/robustness_audit.md](docs/robustness_audit.md) for the input
+concern. See the [robustness audit](https://loadtracer.structuralpython.com/design/robustness-audit.html) for the input
 that loadtracer corrects, reports or rejects, and why.
 
 ## Examples
@@ -96,6 +98,12 @@ loadtracer is developed against a papermodels checkout next to this repository
 ```
 uv sync
 uv run pytest
+```
+
+To build the documentation locally (into `docs/_build/html`):
+
+```
+uv run --group docs sphinx-build -b html docs docs/_build/html
 ```
 
 The integration tests run the papermodels test fixtures end to end and are

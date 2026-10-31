@@ -14,7 +14,7 @@ from nbconvert.preprocessors import CellExecutionError, ExecutePreprocessor
 HERE = pathlib.Path(__file__).parent
 # Examples that are expected to stop with an error; the notebook is saved up to
 # and including the error. See the notebook for the reason.
-EXPECTED_ERRORS = {"Example_5"}
+EXPECTED_ERRORS = set()
 
 
 def run(path: pathlib.Path) -> bool:
