@@ -1,0 +1,7 @@
+/* Wide pandas tables in the example notebooks scroll instead of overflowing. */
+.cell_output .output.text_html {
+  overflow-x: auto;
+}
+.cell_output table.dataframe {
+  font-size: 0.85em;
+}
