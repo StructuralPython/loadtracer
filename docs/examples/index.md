@@ -12,6 +12,7 @@ reactions at the foundation.
 | {doc}`Example 2 <notebooks/example-2>` | Manually tagged elements; when point joist loads matter (a variable joist array on a continuous beam) |
 | {doc}`Example 3 <notebooks/example-3>` | Load transfer through walls; roof joists on a wall; a wall line load onto a beam |
 | {doc}`Example 4 <notebooks/example-4>` | Columns and walls; a continuous beam with an uplift reaction |
+| {doc}`Example 5 <notebooks/example-5>` | A multi-page plan on one sheet; a column that transfers to one beam rather than every element it touches |
 | {doc}`Example 6 <notebooks/example-6>` | User-drawn trib areas and irregular loading areas (no joists) |
 
 Each notebook:
@@ -32,7 +33,9 @@ explains the annotation legend used in the drawings.
 
 Clone the repository and run the notebooks from their folders in
 [`Examples/`](https://github.com/structuralpython/loadtracer/tree/main/Examples).
-They use the development dependencies:
+They use the development dependencies. Example 5 reads its PDF (37 MB) from
+the papermodels repository: set `PAPERMODELS_EXAMPLES` to the papermodels
+`Examples` directory, or keep papermodels next to loadtracer.
 
 ```bash
 uv sync
@@ -48,5 +51,6 @@ notebooks/example-1
 notebooks/example-2
 notebooks/example-3
 notebooks/example-4
+notebooks/example-5
 notebooks/example-6
 ```

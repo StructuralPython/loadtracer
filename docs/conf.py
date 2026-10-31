@@ -93,16 +93,13 @@ html_context = {
 # files inside the docs source directory, so copy them into
 # docs/examples/notebooks/ (git-ignored), with a link to their folder after
 # the title cell.
-#
-# Example 5 is left out: papermodels 0.22 now builds its graph, but its
-# rundown fails (an occupancy in the drawing has no pressures), so its saved
-# outputs are out of date.
 
 EXAMPLES = [
     ("Example 1/Example_1.ipynb", "example-1"),
     ("Example 2/Example_2.ipynb", "example-2"),
     ("Example 3/Example_3.ipynb", "example-3"),
     ("Example 4/Example_4.ipynb", "example-4"),
+    ("Example 5/Example_5.ipynb", "example-5"),
     ("Example 6/Example_6.ipynb", "example-6"),
 ]
 
@@ -120,16 +117,28 @@ def _copy_example_notebooks(app):
             "https://github.com/structuralpython/loadtracer/tree/main/Examples/"
             + folder.replace(" ", "%20")
         )
+        if any(src_path.parent.glob("*.pdf")):
+            note = (
+                f"The notebook and its PDF are in [`Examples/{folder}`]"
+                f"({source_link}) in the repository."
+            )
+        else:
+            pdf_link = (
+                "https://github.com/structuralpython/papermodels/tree/main/Examples/"
+                + folder.replace(" ", "%20")
+            )
+            note = (
+                f"The notebook is in [`Examples/{folder}`]({source_link}) in the "
+                f"repository. Its PDF is in [papermodels' `Examples/{folder}`]"
+                f"({pdf_link})."
+            )
         nb["cells"].insert(
             1,
             {
                 "cell_type": "markdown",
                 "id": "loadtracer-docs-source",
                 "metadata": {},
-                "source": [
-                    f"The notebook and its PDF are in [`Examples/{folder}`]"
-                    f"({source_link}) in the repository.",
-                ],
+                "source": [note],
             },
         )
         (out_dir / f"{slug}.ipynb").write_text(json.dumps(nb), encoding="utf-8")
