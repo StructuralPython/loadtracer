@@ -10,7 +10,7 @@ drawing, then runs the load rundown with loadtracer, down to the reactions at th
 | [Example 2](Example%202/Example_2.ipynb) | `sketch_to_scale-w_manual_tag.pdf` | Manually tagged elements; when point joist loads matter (a variable joist array on a continuous beam) |
 | [Example 3](Example%203/Example_3.ipynb) | `sketch_to_scale-vertical-loads.pdf` | Load transfer through walls; roof joists on a wall; a wall line load onto a beam |
 | [Example 4](Example%204/Example_4.ipynb) | `sketch_to_scale-vertical-loads.pdf` | Columns and walls; a continuous beam with an uplift reaction |
-| [Example 5](Example%205/Example_5.ipynb) | `multi-page-plan.pdf` (not included, 37 MB) | Multi-page plan on one sheet; a column that transfers to one beam rather than every element it touches |
+| [Example 5](Example%205/Example_5.ipynb) | `multi-page-plan.pdf` (not included, 37 MB) | Multi-page plan on one sheet; a column that transfers to one beam rather than every element it touches. Needs papermodels `main`: releases up to 0.22.2 cannot build this graph (`KeyError: 'element'`) |
 | [Example 6](Example%206/Example_6.ipynb) | `user-applied-trib-area-arbitrary-loads.pdf` | User-drawn trib areas and irregular loading areas (no joists) |
 
 papermodels' `Annotation Legend Entries.ipynb` (in its Example 4) explains the annotation
@@ -27,7 +27,7 @@ Each notebook:
 
 ## Running
 
-The examples need papermodels 0.22 or later and the development dependencies:
+The examples need papermodels 0.21 or later (Example 5 needs papermodels `main`) and the development dependencies:
 
 ```
 uv sync
