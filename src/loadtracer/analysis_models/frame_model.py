@@ -4,10 +4,12 @@ from typing import Optional, Any, Union
 import io
 
 from .analysis_model import AbstractAnalysisModel
-from ..errors import UnstableMemberError
+from ..errors import AnalysisError, UnstableMemberError
 from Pynite import FEModel3D
 import pynite_tools as pt
 import jsonchain
+
+FRAME_BACKENDS = ("pynite", "pycba")
 
 
 @dataclass
@@ -64,6 +66,81 @@ class PyniteFrame(AbstractAnalysisModel):
             return pt.from_json(filepath)
         else:
             return pt.load_dict(model_data)
+
+
+@dataclass
+class PycbaFrame(AbstractAnalysisModel):
+    """
+    A frame (beam) analysis model that uses pycba (via pycba-tools) in place of
+    PyniteFEA. It has the same interface and returns reactions in the same
+    format and sign convention as PyniteFrame.
+
+    pycba analyses in-plane bending only: loads in "Fy"/"FY" and moments in
+    "Mz"/"MZ". A non-zero load in any other direction raises an AnalysisError.
+    The FX, FZ, MX and MY reactions are always zero.
+
+    Requires the 'pycba' extra: pip install loadtracer[pycba]
+    """
+
+    pm: dict
+    model: Optional[Any] = None
+
+    def __post_init__(self):
+        self.model = build_pycba_frame_model(self.pm)
+
+    get_reactions = PyniteFrame.get_reactions
+
+    def dump_model(
+        self, fp: Optional[io.StringIO] = None, indent: int = 2
+    ) -> Optional[dict]:
+        """
+        Dumps the model to 'fp'. If 'fp' is None, then a Python
+        dict is returned.
+        """
+        ct = _import_pycba_tools()
+        if fp is not None:
+            return ct.dump(self.model, fp, indent=indent)
+        else:
+            return ct.dump_dict(self.model)
+
+    def load_model(
+        self, fp: Optional[io.StringIO] = None, model_data: Optional[dict] = None
+    ):
+        """
+        Loads the model from either 'fp' or 'model_data' and returns a CBAModel
+        """
+        ct = _import_pycba_tools()
+        if fp is not None:
+            return ct.load(fp)
+        else:
+            return ct.load_dict(model_data)
+
+    @classmethod
+    def from_papermodel(
+        self,
+        model_data: Optional[dict] = None,
+        filepath: Optional[str | pathlib.Path] = None,
+    ):
+        """
+        Loads the model from either 'filepath' or 'model_data' and returns a CBAModel
+        """
+        ct = _import_pycba_tools()
+        if filepath is not None:
+            return ct.from_json(filepath)
+        else:
+            return ct.load_dict(model_data)
+
+
+def frame_model_class(backend: str) -> type[PyniteFrame | PycbaFrame]:
+    """
+    Returns the frame analysis model class for 'backend' ("pynite" or "pycba").
+    """
+    if backend == "pynite":
+        return PyniteFrame
+    if backend == "pycba":
+        _import_pycba_tools()  # Fail early when the extra is not installed
+        return PycbaFrame
+    raise ValueError(f"Unknown frame backend {backend!r}; use one of {FRAME_BACKENDS}.")
 
 
 def build_pynite_frame_model(
@@ -142,6 +219,96 @@ def build_pynite_frame_model(
     return model
 
 
+TRANSVERSE_DIRECTIONS = ("Fy", "FY")
+MOMENT_DIRECTIONS = ("Mz", "MZ")
+
+
+def build_pycba_frame_model(
+    pm: dict,
+    EI: float = 1.0,
+    load_combinations: Optional[list[dict]] = None,
+):
+    """
+    Returns a pycba_tools.CBAModel populated with the data from 'pm'. It is the
+    pycba equivalent of build_pynite_frame_model: the same nodes, supports
+    (see get_node_locations), member name, loads and load combinations.
+
+    The loads in 'pm' use Pynite's sign convention (negative "Fy" is downward)
+    and are converted to pycba's (positive is downward). Moments have the same
+    sign in both. Loads in other directions cannot be analysed by pycba: a
+    non-zero one raises an AnalysisError (all-zero ones are skipped).
+    """
+    ct = _import_pycba_tools()
+    tag = pm["element_attributes"]["tag"]
+    nodes = get_node_locations(pm)
+    R = []
+    for _, constraints in nodes:
+        constraints = constraints or [0] * 6
+        # pycba restrains (-1) or frees (0) the vertical (DY) and rotational (RZ) DOFs
+        R.extend([-1 if constraints[1] else 0, -1 if constraints[5] else 0])
+    model = ct.CBAModel(
+        node_locations=[location for location, _ in nodes],
+        EI=EI,
+        R=R,
+        name=tag,
+        node_names=[f"N{idx}" for idx in range(len(nodes))],
+    )
+
+    load_cases = set()
+    for dist_load in pm["loads"]["distributed_loads"]:
+        for expansion in dist_load.get("expanded", []):
+            load_cases.add(expansion["case"])
+            w1, w2 = expansion["start_magnitude"], expansion["end_magnitude"]
+            if expansion["dir"] in TRANSVERSE_DIRECTIONS:
+                model.add_distributed_load(
+                    -w1,
+                    -w2,
+                    expansion["start_loc"],
+                    expansion["end_loc"],
+                    case=expansion["case"],
+                )
+            elif w1 or w2:
+                raise _unsupported_direction(expansion["dir"], "distributed", tag)
+
+    for point_load in pm["loads"]["point_loads"]:
+        for expansion in point_load.get("expanded", []):
+            load_cases.add(expansion["case"])
+            P = expansion["magnitude"]
+            if expansion["dir"] in TRANSVERSE_DIRECTIONS:
+                model.add_point_load(-P, expansion["location"], case=expansion["case"])
+            elif expansion["dir"] in MOMENT_DIRECTIONS:
+                model.add_moment_load(P, expansion["location"], case=expansion["case"])
+            elif P:
+                raise _unsupported_direction(expansion["dir"], "point", tag)
+
+    for load_combination in load_combinations or []:
+        model.add_load_combo(**load_combination)
+
+    for load_case in sorted(load_cases):
+        model.add_load_combo(name=load_case, factors={load_case: 1.0})
+
+    return model
+
+
+def _unsupported_direction(direction: str, kind: str, tag: str) -> AnalysisError:
+    return AnalysisError(
+        f"The pycba frame backend cannot analyse {kind} loads in '{direction}'; it "
+        "models in-plane bending only ('Fy'/'FY' loads and 'Mz' moments). Use "
+        "frame_backend='pynite' for this model.",
+        tag,
+    )
+
+
+def _import_pycba_tools():
+    try:
+        import pycba_tools
+    except ImportError as e:
+        raise ImportError(
+            "The 'pycba' frame backend needs pycba-tools: pip install loadtracer[pycba]"
+        ) from e
+    return pycba_tools
+
+
 def pynite_default_material():
     return {"name": "default", "E": 1, "G": 1, "nu": 0.5, "rho": 1.0, "fy": 1.0}
 
@@ -203,9 +370,10 @@ def get_node_locations(pm: dict) -> list[tuple[float, Optional[list[int]]]]:
     return nodes
 
 
-def get_support_reactions(model: FEModel3D, pm: dict) -> dict[int, dict]:
+def get_support_reactions(model: Any, pm: dict) -> dict[int, dict]:
     """
-    Returns the reactions of the solved 'model' keyed by support index, in the
+    Returns the reactions of the solved 'model' (a Pynite FEModel3D or a
+    pycba_tools.CBAModel) keyed by support index, in the
     same order as the supports in 'pm' (which is the order that papermodels
     uses for 'transfer_reaction_index'). Every support is included, even when
     its reactions are zero, so that the indexes always line up.

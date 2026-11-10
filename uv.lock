@@ -1018,12 +1018,18 @@ dependencies = [
     { name = "safer" },
 ]
 
+[package.optional-dependencies]
+pycba = [
+    { name = "pycba-tools" },
+]
+
 [package.dev-dependencies]
 dev = [
     { name = "black" },
     { name = "ipykernel" },
     { name = "nbconvert" },
     { name = "pandas" },
+    { name = "pycba-tools" },
     { name = "pytest" },
 ]
 docs = [
@@ -1041,10 +1047,12 @@ requires-dist = [
     { name = "load-distribution", specifier = ">=0.1.7" },
     { name = "loadbearing-wall", specifier = ">=0.5.0" },
     { name = "papermodels", editable = "../papermodels" },
+    { name = "pycba-tools", marker = "extra == 'pycba'", specifier = ">=0.1.0" },
     { name = "pynite-tools", specifier = ">=0.6.7" },
     { name = "pynitefea", specifier = ">=1.6.2" },
     { name = "safer", specifier = ">=5.1.0" },
 ]
+provides-extras = ["pycba"]
 
 [package.metadata.requires-dev]
 dev = [
@@ -1052,6 +1060,7 @@ dev = [
     { name = "ipykernel", specifier = ">=6.29.5" },
     { name = "nbconvert", specifier = ">=7.17.1" },
     { name = "pandas", specifier = ">=3.0.6" },
+    { name = "pycba-tools", specifier = ">=0.1.0" },
     { name = "pytest", specifier = ">=8.4.0" },
 ]
 docs = [
@@ -1951,6 +1960,35 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/da/9f/abfd2959e9261dd5217ca8551d4de211ca6ab26fe9b72cf44731ff6c4442/pure_eval-0.2.4.tar.gz", hash = "sha256:260c2774686e651b79f8b8e7fc9d80b3599ea6a66334b47d5f4abb69fc2c0ea1", size = 20563, upload-time = "2026-09-10T21:41:22.836Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/6d/18/83376915176eb058cb86470eb7396388a13350b09a8f233a79303bbcbc5b/pure_eval-0.2.4-py3-none-any.whl", hash = "sha256:96cae060a313cfaad51bb761278bfb0e62dc0248d9315a81173752dc546cd37a", size = 11893, upload-time = "2026-09-10T21:41:21.532Z" },
+]
+
+[[package]]
+name = "pycba"
+version = "1.0.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "matplotlib" },
+    { name = "numpy" },
+    { name = "scipy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/6d/f4/7b4489b5d0074edb30ffdbe998a4b9086fc0bb4547347fbf823036272a5b/pycba-1.0.2.tar.gz", hash = "sha256:e8dce2c4861d23b8238ec38b59c7fc8894a797e2e426054f8918dacb1c26e41b", size = 195851, upload-time = "2026-09-15T13:25:50.41Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e9/4e/d1c50ce4944c2d3675f63a20b8c720e8b218454b3789bcda951d5e4839f6/pycba-1.0.2-py2.py3-none-any.whl", hash = "sha256:7259c9c19d116b230485f15e6d39805b4f22e6d7179d972d6e59407ad1cce890", size = 153289, upload-time = "2026-09-15T13:25:48.832Z" },
+]
+
+[[package]]
+name = "pycba-tools"
+version = "0.1.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "deepmerge" },
+    { name = "numpy" },
+    { name = "pycba" },
+    { name = "pydantic" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/79/e0/a119860958e10eafadd5e27fa56e1ba668cd4309627f785ac32d514a1913/pycba_tools-0.1.0.tar.gz", hash = "sha256:e8673ee0d36341d2139fcce8d94c254df86138988845ba56a11dc70797e40d39", size = 28222, upload-time = "2026-11-10T05:09:09.116Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/64/10/e8c547bf51e30ae3ad3e634cd90e161a6ae7eeb1fa3e0f37775f68fde428/pycba_tools-0.1.0-py3-none-any.whl", hash = "sha256:026f6ad97c27c9efe34592d76d983f98709edf3b0f1917503176417b3071a1a7", size = 27626, upload-time = "2026-11-10T05:09:07.83Z" },
 ]
 
 [[package]]

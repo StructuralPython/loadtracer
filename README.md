@@ -7,6 +7,8 @@ loadtracer takes a [papermodels](https://github.com/StructuralPython/papermodels
 from the top of the graph down, and its reactions are applied to the elements that
 support it. Beams are analysed with [PyniteFEA](https://github.com/JWock82/Pynite),
 walls with `loadbearing_wall.LinearWallModel`, and columns as concentric columns.
+Beams can be analysed with [pycba](https://github.com/ccaprani/pycba) instead
+(`frame_backend="pycba"`, see Options).
 
 loadtracer is an analysis step only. It needs the graph and the occupancy loads,
 not design data such as element heights or floor elevations.
@@ -76,6 +78,11 @@ joists carry more than one occupancy or other transferred loads. Use
   it in `lt.errors` and continue.
 - `missing_reactions="raise" | "ignore"`: what to do when a member receives load
   from a member without reactions (e.g. one that failed or was excluded).
+- `frame_backend="pynite" | "pycba"`: analyse beams with PyniteFEA (default) or
+  with pycba via [pycba-tools](https://github.com/StructuralPython/pycba-tools)
+  (`pip install loadtracer[pycba]`). Reactions have the same format and signs.
+  pycba handles in-plane bending only (`Fy` loads, `Mz` moments): a member with
+  loads in other directions fails with an `AnalysisError`.
 - `execute_analyses(exclude_members=[...])`: skip members. Excluding a joist
   array (e.g. `"J1.0"`) excludes all of its joists.
 - `execute_analyses(linear_wall_spread_angle=...)`: spread loads down walls at

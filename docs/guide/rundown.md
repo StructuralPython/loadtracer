@@ -59,7 +59,7 @@ which papermodels reads from the legend.
 
 | Member | Orientation / reaction | Analysis model |
 |---|---|---|
-| Beams and joists | horizontal / point or linear | {class}`~loadtracer.analysis_models.frame_model.PyniteFrame`: a PyniteFEA `FEModel3D` with one member |
+| Beams and joists | horizontal / point or linear | {class}`~loadtracer.analysis_models.frame_model.PyniteFrame`: a PyniteFEA `FEModel3D` with one member, or with `frame_backend="pycba"`, {class}`~loadtracer.analysis_models.frame_model.PycbaFrame`: a pycba-tools `CBAModel` |
 | Walls | vertical / linear | {class}`~loadtracer.analysis_models.wall_model.LoadbearingWall`: a `loadbearing_wall.LinearWallModel` |
 | Columns | vertical / point | {class}`~loadtracer.analysis_models.column_model.PointColumn`: a concentric column |
 

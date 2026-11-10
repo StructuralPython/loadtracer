@@ -9,7 +9,8 @@ It analyses every member in that graph, from the roof down, and applies each
 member's reactions to the members that support it, until every load has reached
 the foundation.
 
-- Beams and joists are analysed with [PyniteFEA](https://github.com/JWock82/Pynite).
+- Beams and joists are analysed with [PyniteFEA](https://github.com/JWock82/Pynite),
+  or optionally with [pycba](https://github.com/ccaprani/pycba).
 - Walls are analysed with `loadbearing_wall.LinearWallModel`.
 - Columns are analysed as concentric columns.
 

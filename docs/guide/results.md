@@ -50,7 +50,9 @@ With `execute_analyses(artifacts_dir=...)`, loadtracer writes:
 
 The frame models are written with
 [pynite-tools](https://pypi.org/project/pynite-tools/), so they can be loaded
-back into PyniteFEA models.
+back into PyniteFEA models, or with
+[pycba-tools](https://pypi.org/project/pycba-tools/) when
+`frame_backend="pycba"` (see {doc}`options`).
 
 ## Issues
 

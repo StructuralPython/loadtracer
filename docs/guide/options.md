@@ -31,6 +31,13 @@ lt = LoadTracer(
 : How joist reactions are classified when they are converted. See
   {doc}`joist-loads`.
 
+`frame_backend`
+: The library that analyses beams and joists: `"pynite"` (default,
+  [PyniteFEA](https://github.com/JWock82/Pynite)) or `"pycba"`
+  ([pycba](https://github.com/ccaprani/pycba), through
+  [pycba-tools](https://github.com/StructuralPython/pycba-tools)). See
+  [Frame backends](#frame-backends).
+
 `show_progress`
 : Not used yet; to show a progress bar, pass `progress=True` to
   `execute_analyses`.
@@ -65,6 +72,40 @@ lt.execute_analyses(
 
 `progress`
 : Show a progress bar while the members are analysed.
+
+(frame-backends)=
+## Frame backends
+
+Both backends build the same beam from a papermodel (the same nodes, supports
+and loads) and return reactions in the same format, with the same support
+indexes and sign convention, so they are interchangeable:
+
+```python
+lt = LoadTracer(geometry_graph=graph, occupancies=occupancies, frame_backend="pycba")
+```
+
+The `"pycba"` backend needs the `pycba` extra:
+
+```bash
+pip install "loadtracer[pycba] @ git+https://github.com/structuralpython/loadtracer.git"
+```
+
+| | `"pynite"` | `"pycba"` |
+|---|---|---|
+| Analysis | 3D frame finite elements | 2D continuous beam (in-plane bending) |
+| Load directions | All | Gravity (`Fy`/`FY` loads) and `Mz` moments. A member with a non-zero load in another direction fails with an `AnalysisError` |
+| Reactions | `FX` ... `MZ` | `FY` and `MZ`; the others are zero |
+| `models.json` | [pynite-tools](https://pypi.org/project/pynite-tools/) JSON | [pycba-tools](https://pypi.org/project/pycba-tools/) JSON (tagged `"backend": "pycba"`) |
+
+The tests run every papermodels test drawing with both backends and check that
+the reactions agree.
+
+```{note}
+PyniteFEA (up to at least 3.2.1) applies a trapezoidal load incorrectly when
+the load spans three or more segments of a member (between supports or other
+nodes), and its reactions then do not balance the load. Converted joist loads
+can be trapezoidal. pycba does not have this problem.
+```
 
 ## Load directions
 
