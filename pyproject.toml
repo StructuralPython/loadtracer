@@ -7,7 +7,7 @@ authors = [
 ]
 requires-python = ">=3.12"
 dependencies = [
-    "papermodels>=0.22.0",
+    "papermodels>=0.22.4",
     "loadbearing-wall>=0.5.0",
     "PyniteFEA>=1.6.2",
     "safer>=5.1.0",
@@ -41,8 +41,3 @@ docs = [
     "sphinx-copybutton>=0.5",
     "sphinx-design>=0.6",
 ]
-
-[tool.uv.sources]
-# uv installs papermodels from GitHub (the commit pinned in uv.lock). CI installs
-# the PyPI release with --no-sources.
-papermodels = { git = "https://github.com/StructuralPython/papermodels", branch = "main" }

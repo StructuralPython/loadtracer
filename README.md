@@ -99,10 +99,6 @@ reactions at the foundation.
 
 ## Development
 
-In development, uv installs papermodels from its GitHub repository, at the
-commit pinned in `uv.lock` (see `[tool.uv.sources]` in `pyproject.toml`).
-Run `uv lock --upgrade-package papermodels` to move to the latest papermodels
-`main`:
 
 ```
 uv sync

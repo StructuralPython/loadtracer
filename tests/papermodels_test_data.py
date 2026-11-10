@@ -6,8 +6,8 @@ so they are taken from, in order:
 1. the directory in the PAPERMODELS_TEST_DATA environment variable
 2. a papermodels checkout next to this repository (../papermodels)
 3. the papermodels repository on GitHub, at the version that is installed: the
-   commit that uv installed from GitHub (see [tool.uv.sources]), or the release
-   tag (e.g. v0.22.2) of a PyPI install. They are downloaded once and cached in
+   release tag (e.g. v0.22.4) of a PyPI install, or the commit of a git install.
+   They are downloaded once and cached in
    LOADTRACER_CACHE_DIR (default ~/.cache/loadtracer).
 
 Returns None when none of these is available (e.g. offline).
