@@ -16,6 +16,11 @@ dependencies = [
     "load-distribution>=0.1.7",
 ]
 
+[project.optional-dependencies]
+pycba = [
+    "pycba-tools>=0.1.0",
+]
+
 [build-system]
 requires = ["flit_core >=3.2,<4"]
 build-backend = "flit_core.buildapi"
@@ -26,6 +31,7 @@ dev = [
     "ipykernel>=6.29.5",
     "nbconvert>=7.17.1",
     "pandas>=3.0.6",
+    "pycba-tools>=0.1.0",
     "pytest>=8.4.0",
 ]
 docs = [

@@ -10,7 +10,7 @@ import jsonchain
 from pydantic import BaseModel, Field, model_validator
 
 from .analysis_models.column_model import PointColumn
-from .analysis_models.frame_model import PyniteFrame
+from .analysis_models.frame_model import frame_model_class
 from .analysis_models.wall_model import LoadbearingWall
 from .errors import (
     AnalysisError,
@@ -54,6 +54,11 @@ class LoadTracer(BaseModel, arbitrary_types_allowed=True):
         10% of the mean line load.
     'joist_variability_ratio': Joist loads that are "variable" and whose largest
         line load is this many times the smallest raise a warning.
+    'frame_backend': "pynite" or "pycba". The library used to analyse beams.
+        "pynite" (PyniteFEA) analyses every load direction. "pycba" (pycba, via
+        pycba-tools; pip install loadtracer[pycba]) analyses in-plane bending
+        only ("Fy" loads and "Mz" moments) and fails on members with loads in
+        other directions. Both give reactions in the same format and signs.
     """
 
     geometry_graph: "GeometryGraph"
@@ -72,6 +77,7 @@ class LoadTracer(BaseModel, arbitrary_types_allowed=True):
     joist_loads: Literal["distributed", "point"] = "distributed"
     joist_profile_rel_tol: float = Field(default=0.10, ge=0.0, lt=1.0)
     joist_variability_ratio: float = Field(default=2.0, gt=1.0)
+    frame_backend: Literal["pynite", "pycba"] = "pynite"
     show_progress: bool = True
     models: Optional[dict] = None
     reactions: Optional[dict] = None
@@ -114,6 +120,8 @@ class LoadTracer(BaseModel, arbitrary_types_allowed=True):
                 )
             loads_found.extend(loads.keys())
         self.load_cases_used = sorted(set(loads_found))
+        # Fail now, not mid-rundown, if the frame backend is not installed
+        frame_model_class(self.frame_backend)
 
     @property
     def load_directions(self) -> frozenset[str]:
@@ -272,7 +280,9 @@ class LoadTracer(BaseModel, arbitrary_types_allowed=True):
             case "vertical", "point":
                 member_model = PointColumn(expanded_papermodel)
             case "horizontal", _:
-                member_model = PyniteFrame(expanded_papermodel)
+                member_model = frame_model_class(self.frame_backend)(
+                    expanded_papermodel
+                )
             case _:
                 raise InvalidPapermodelError(
                     f"No analysis model for {orientation}/{reaction_type} members.", tag

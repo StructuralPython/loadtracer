@@ -12,6 +12,13 @@ This also installs [papermodels](https://papermodels.structuralpython.com/)
 and the analysis packages (PyniteFEA, loadbearing-wall). loadtracer needs
 Python 3.12 or later.
 
+To analyse beams with pycba instead of PyniteFEA (see `frame_backend` in
+{doc}`guide/options`), install the `pycba` extra:
+
+```bash
+pip install "loadtracer[pycba] @ git+https://github.com/structuralpython/loadtracer.git"
+```
+
 ## Your first rundown
 
 A rundown has three steps. The first is the papermodels workflow, described in

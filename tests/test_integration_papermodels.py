@@ -112,3 +112,13 @@ def test_point_and_distributed_joist_loads_carry_the_same_total_load(rundown):
     point = run(distributed.geometry_graph, joist_loads="point")
     for case, total in bottom_reaction_totals(point).items():
         assert math.isclose(bottom_reaction_totals(distributed)[case], total, rel_tol=1e-6)
+
+
+def test_pycba_frame_backend_gives_the_same_reactions(rundown):
+    pytest.importorskip("pycba_tools")
+    from test_frame_backends import assert_same_reactions
+
+    name, pynite = rundown
+    pycba = run(load_graph(name), frame_backend="pycba")
+    assert pycba.errors == {}
+    assert_same_reactions(pynite.reactions, pycba.reactions)
