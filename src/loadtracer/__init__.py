@@ -4,7 +4,7 @@ into analysis models. By default the frame member analysis models
 are in PyNiteFEA and wall models are from loadbearing_wall.LinearWallModel.
 """
 
-__version__ = "0.6.0"
+__version__ = "0.7.0"
 
 from .errors import (
     AnalysisError,
