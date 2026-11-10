@@ -1046,7 +1046,7 @@ requires-dist = [
     { name = "jsonchain", specifier = ">=0.5.0" },
     { name = "load-distribution", specifier = ">=0.1.7" },
     { name = "loadbearing-wall", specifier = ">=0.5.0" },
-    { name = "papermodels", editable = "../papermodels" },
+    { name = "papermodels", specifier = ">=0.22.0" },
     { name = "pycba-tools", marker = "extra == 'pycba'", specifier = ">=0.1.0" },
     { name = "pynite-tools", specifier = ">=0.6.7" },
     { name = "pynitefea", specifier = ">=1.6.2" },
@@ -1657,7 +1657,8 @@ wheels = [
 
 [[package]]
 name = "papermodels"
-source = { editable = "../papermodels" }
+version = "0.22.2"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "ezdxf" },
     { name = "load-distribution" },
@@ -1670,37 +1671,9 @@ dependencies = [
     { name = "shapely" },
     { name = "textalloc" },
 ]
-
-[package.metadata]
-requires-dist = [
-    { name = "ezdxf" },
-    { name = "load-distribution", specifier = ">=0.1.7" },
-    { name = "matplotlib" },
-    { name = "networkx" },
-    { name = "numpy" },
-    { name = "numpy", specifier = ">=2.0.0" },
-    { name = "parse" },
-    { name = "pikepdf", specifier = ">=10.0.2,<10.1" },
-    { name = "pygraphviz", marker = "extra == 'graphviz'", specifier = ">=1.14" },
-    { name = "rich", specifier = ">=14.2.0" },
-    { name = "shapely", specifier = ">=2.0.0" },
-    { name = "textalloc", specifier = ">=1.2.1" },
-]
-provides-extras = ["graphviz"]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "black", specifier = ">=25.1.0" },
-    { name = "ipykernel", specifier = ">=6.30.1" },
-    { name = "pytest" },
-    { name = "pytest-check", specifier = ">=2.5.4" },
-]
-docs = [
-    { name = "myst-nb", specifier = ">=1.1" },
-    { name = "shibuya", specifier = ">=2025.1" },
-    { name = "sphinx", specifier = ">=8.1" },
-    { name = "sphinx-copybutton", specifier = ">=0.5" },
-    { name = "sphinx-design", specifier = ">=0.6" },
+sdist = { url = "https://files.pythonhosted.org/packages/d3/b3/9c958a4223fff34529f3883e28ccb4d65a6856d06bbd2b62c397c05ce16b/papermodels-0.22.2.tar.gz", hash = "sha256:6400b1ff07ec2357c683ebce2d90debced0b2d0fabb416389ad994d4800b9de6", size = 80188, upload-time = "2026-09-19T00:22:59.449Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c2/b3/8d2b94a452cc335748d18e1ff1f56ad47980a6d032214a3c87d57edead26/papermodels-0.22.2-py2.py3-none-any.whl", hash = "sha256:bc97fd9f97164ab741ef2264f0e9d25006f01acefe17ff514d4745b1ebc3205b", size = 88671, upload-time = "2026-09-19T00:22:58.214Z" },
 ]
 
 [[package]]

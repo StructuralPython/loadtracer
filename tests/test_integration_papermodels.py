@@ -1,15 +1,15 @@
 """
 End to end load rundowns of the papermodels test fixtures.
 
-Requires a papermodels (>= 0.21) checkout next to this repository
-(../papermodels); the tests are skipped otherwise.
+The drawings are the papermodels test fixtures, from a papermodels checkout
+next to this repository (../papermodels) or downloaded from GitHub (see
+papermodels_test_data). The tests are skipped when neither is available.
 """
 
 import contextlib
 from collections import defaultdict
 import io
 import math
-import pathlib
 import warnings
 from decimal import Decimal
 
@@ -17,19 +17,20 @@ import pytest
 
 import papermodels
 from conservation import applied_occupancy_totals, bottom_reaction_totals, resultant
+from papermodels_test_data import papermodels_test_data
 from loadtracer import LoadTracerWarning
 from loadtracer.load_tracer import LoadTracer
 
-TEST_DATA = pathlib.Path(__file__).parents[2] / "papermodels" / "tests" / "test_data"
+TEST_DATA = papermodels_test_data()
 QUARTER_INCH_SCALE = Decimal(1) / Decimal(72) * Decimal(4)
 PAPERMODELS_VERSION = tuple(int(p) for p in papermodels.__version__.split(".")[:2])
 
 pytestmark = pytest.mark.skipif(
-    not TEST_DATA.exists() or PAPERMODELS_VERSION < (0, 21),
-    reason="needs a papermodels >= 0.21 checkout at ../papermodels",
+    TEST_DATA is None or PAPERMODELS_VERSION < (0, 21),
+    reason="needs papermodels >= 0.21 and its test drawings (../papermodels or GitHub)",
 )
 
-FIXTURES = sorted(p.name for p in TEST_DATA.glob("*.pdf")) if TEST_DATA.exists() else []
+FIXTURES = sorted(p.name for p in TEST_DATA.glob("*.pdf")) if TEST_DATA else []
 # Walls in these fixtures are linked to members that overlap under them, so the
 # load on the overlap is applied to both (reported in LoadTracer.issues)
 OVERLAPPING_SUPPORTS = {"many_correspondents.pdf"}

@@ -43,5 +43,6 @@ docs = [
 ]
 
 [tool.uv.sources]
-# Develop against the sibling papermodels checkout. CI installs with --no-sources.
-papermodels = { path = "../papermodels", editable = true }
+# uv installs papermodels from GitHub (the commit pinned in uv.lock). CI installs
+# the PyPI release with --no-sources.
+papermodels = { git = "https://github.com/StructuralPython/papermodels", branch = "main" }
