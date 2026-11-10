@@ -6,18 +6,22 @@ import pytest
 from builders import DictGraph, make_beam_pm, make_wall_pm, occupancy_load, point_load
 from conservation import applied_occupancy_totals, bottom_reaction_totals
 from loadtracer.errors import LoadTracerWarning
+import numpy as np
+
 from loadtracer.joist_load_conversion import (
-    DECREASING,
-    INCREASING,
+    POLYLINE,
     UNIFORM,
-    VARIABLE,
     JoistLoadVariabilityWarning,
     JoistTribWidthWarning,
-    classify_profile,
     convert_joist_point_loads,
-    fit_trapezoid,
+    fit_knot_values,
+    fit_polyline,
     group_joist_point_loads,
+    knot_load_moments,
+    load_shift,
     split_joist_tag,
+    strip_bounds,
+    strip_load_matrix,
     trib_widths,
 )
 from loadtracer.load_tracer import LoadTracer
@@ -111,38 +115,91 @@ def test_trib_widths_add_up_to_the_run():
 # Profiles
 
 
-@pytest.mark.parametrize(
-    "intensities, profile",
-    [
-        ([2.0] * 6, UNIFORM),
-        ([1.0, 1.5, 2.0, 2.5, 3.0], INCREASING),
-        ([3.0, 2.5, 2.0, 1.5, 1.0], DECREASING),
-        ([1.0, 2.0, 3.0, 2.0, 1.0], VARIABLE),
-        ([1.0, 1.04, 0.97, 1.03, 0.98], UNIFORM),
-        ([1.0, 1.08, 0.95, 1.05, 1.02], VARIABLE),
-        ([1.0, -1.0, 1.0], VARIABLE),
-        ([0.0, 0.0, 0.0], UNIFORM),
-    ],
-    ids=["uniform", "increasing", "decreasing", "triangular", "noisy", "noisy-over-tol", "uplift", "zero"],
-)
-def test_classify_profile(intensities, profile):
-    assert classify_profile(intensities) == profile
+# The polyline arithmetic
 
 
-@pytest.mark.parametrize("scale", [1e-3, 1.0, 1e6, -1.0, -1e6])
-@pytest.mark.parametrize(
-    "intensities",
-    [[2.0] * 5, [1.0, 1.5, 2.0, 2.5], [2.5, 2.0, 1.5, 1.0], [1.0, 3.0, 1.0], [1.0, 1.05, 0.97]],
-)
-def test_classify_profile_is_scale_free(intensities, scale):
-    assert classify_profile([w * scale for w in intensities]) == classify_profile(intensities)
+def random_run(seed: int):
+    """Joists at uneven spacing with random reactions, and a random set of knots."""
+    rng = np.random.default_rng(seed)
+    x = np.unique(rng.uniform(0.0, 12.0, rng.integers(2, 30)))
+    while len(x) < 2:
+        x = np.unique(rng.uniform(0.0, 12.0, 5))
+    P = rng.uniform(-1.0, 5.0, len(x))
+    interior = rng.choice(np.arange(1, len(x) - 1), rng.integers(0, max(len(x) - 2, 0) + 1), replace=False) if len(x) > 2 else []
+    return x, P, sorted({0, len(x) - 1, *map(int, interior)})
 
 
-def test_classify_profile_tolerance_is_relative():
-    # max - min relative to the mean: 0.09 and 0.11 around a mean of 1.0
-    assert classify_profile([0.955, 1.045], rel_tol=0.10) == UNIFORM
-    assert classify_profile([100.955, 101.045], rel_tol=0.10) == UNIFORM
-    assert classify_profile([0.945, 1.055, 1.0], rel_tol=0.10) != UNIFORM
+def strip_centroids(x):
+    b = strip_bounds(x)
+    return (b[:-1] + b[1:]) / 2
+
+
+@pytest.mark.parametrize("seed", range(25))
+def test_strip_load_matrix_reproduces_constant_and_linear_loads(seed):
+    x, _, knots = random_run(seed)
+    A = strip_load_matrix(x, knots)
+    widths = np.diff(strip_bounds(x))
+    assert A @ np.ones(len(knots)) == pytest.approx(widths)
+    assert A @ x[knots] == pytest.approx(widths * strip_centroids(x))
+
+
+def test_strip_load_matrix_by_hand():
+    # Two knots (0 and 2.4) over strips [0, 0.3], [0.3, 0.9], ...: the hat of
+    # the first knot is 1 - x / 2.4, so its integral over [0, 0.3] is 0.28125
+    A = strip_load_matrix([0.0, 0.6, 1.2, 1.8, 2.4], [0, 4])
+    assert A[:, 0] == pytest.approx([0.28125, 0.45, 0.3, 0.15, 0.01875])
+    assert A[:, 1] == pytest.approx(A[::-1, 0])
+
+
+@pytest.mark.parametrize("seed", range(25))
+def test_knot_load_moments_by_numerical_integration(seed):
+    x, _, knots = random_run(seed)
+    F, M = knot_load_moments(x, knots)
+    fine = np.linspace(x[0], x[-1], 200_001)
+    for k in range(len(knots)):
+        hat = np.interp(fine, x[knots], np.eye(len(knots))[k])
+        assert F[k] == pytest.approx(np.trapezoid(hat, fine), abs=1e-6)
+        assert M[k] == pytest.approx(np.trapezoid(fine * hat, fine), abs=1e-5)
+
+
+@pytest.mark.parametrize("seed", range(25))
+def test_fitted_load_keeps_the_total_and_the_resultant_location(seed):
+    x, P, knots = random_run(seed)
+    u = fit_knot_values(x, P, knots)
+    F, M = knot_load_moments(x, knots)
+    assert F @ u == pytest.approx(P.sum(), abs=1e-9)
+    assert M @ u == pytest.approx((x * P).sum(), abs=1e-8)
+    assert (strip_load_matrix(x, knots) @ u).sum() == pytest.approx(P.sum(), abs=1e-9)
+
+
+def test_worked_example():
+    # A step from 3.45 to 6.0 kN/m (the docs' worked example)
+    x = [0.0, 0.6, 1.2, 1.8, 2.4]
+    P = [1.035, 2.07, 2.07, 3.0, 1.8]
+    # One trapezoid: fixed by the total (9.975) and the resultant location alone
+    assert fit_knot_values(x, P, [0, 4]) == pytest.approx([2.61875, 5.69375])
+    knots, u, error = fit_polyline(x, P, tol=0.02)
+    assert knots == [0, 2, 3, 4]
+    assert error <= 0.02
+
+
+@pytest.mark.parametrize("tol", [0.10, 0.05, 0.02, 0.005])
+def test_fit_polyline_meets_the_tolerance(tol):
+    x = np.arange(31) * 0.6
+    w = np.where((x > 13.0) & (x < 15.5), 9.05, 4.2)  # an RTU on a roof beam
+    P = w * np.diff(strip_bounds(x))
+    knots, u, error = fit_polyline(x, P, tol)
+    assert error <= tol
+    assert knots[0] == 0 and knots[-1] == len(x) - 1
+    assert len(knots) < len(x)
+
+
+def test_load_shift():
+    # The joist loads [1, 1, 2] as a uniform 4/2.0 over strips 0.5, 1.0, 0.5:
+    # the strip loads are [1, 2, 1]; the running differences are 0 and 1 (of 4)
+    assert load_shift([1.0, 2.0, 1.0], [1.0, 1.0, 2.0]) == pytest.approx(0.25)
+    assert load_shift([1.0, 1.0, 2.0], [1.0, 1.0, 2.0]) == 0.0
+    assert load_shift([0.0], [0.0]) == 0.0
 
 
 # Conversion scenarios
@@ -154,6 +211,7 @@ def test_uniform_joists_become_a_udl():
     (dist_load,) = converted(pm)
     (component,) = dist_load["expanded"]
     assert component["profile"] == UNIFORM
+    assert component["load_shift"] == pytest.approx(0.0, abs=1e-12)
     assert component["start_magnitude"] == pytest.approx(3.0)
     assert component["end_magnitude"] == pytest.approx(3.0)
     assert (component["start_loc"], component["end_loc"]) == (0.0, 8.0)
@@ -162,46 +220,69 @@ def test_uniform_joists_become_a_udl():
     assert dist_load["converted_from"] == [f"J1.0-{i}" for i in range(9)]
 
 
+def test_nearly_uniform_joists_become_a_udl():
+    # A 3% bump over part of the run (RB0.4 in the ymprint-chaining demo):
+    # a uniform load moves less than 1% of the load along the beam
+    locations = [0.6 * i for i in range(21)]
+    line_load = [3.56 if 1.5 < x < 9.0 else 3.45 for x in locations]
+    reactions = [w * b for w, b in zip(line_load, trib_widths(locations))]
+    pm = convert_joist_point_loads(beam_with_points(joist_array("J1.0", locations, reactions)))
+    (component,) = converted(pm)[0]["expanded"]
+    assert component["profile"] == UNIFORM
+    assert 0.0 < component["load_shift"] <= 0.01
+    assert resultant(component) == pytest.approx(sum(reactions))
+
+
 @pytest.mark.parametrize("direction", [1, -1])
-def test_linearly_varying_joists_become_a_trapezoid(direction):
+def test_linearly_varying_joists_become_one_trapezoid(direction):
     locations = [float(i) for i in range(11)]
     widths = trib_widths(locations)
     line_load = [2.0 + 0.4 * x for x in locations][::direction]
     reactions = [w * b for w, b in zip(line_load, widths)]
     pm = convert_joist_point_loads(beam_with_points(joist_array("J1.0", locations, reactions)))
     (component,) = converted(pm)[0]["expanded"]
-    assert component["profile"] == (INCREASING if direction == 1 else DECREASING)
-    assert resultant(component) == pytest.approx(sum(reactions))
-    assert component["start_magnitude"] == pytest.approx(line_load[0], rel=0.05)
-    assert component["end_magnitude"] == pytest.approx(line_load[-1], rel=0.05)
+    assert component["profile"] == POLYLINE
+    # Close, not exact: the end joists' reactions act at the ends of the run,
+    # but a line load puts them over half a joist spacing
+    assert component["start_magnitude"] == pytest.approx(line_load[0], rel=0.03)
+    assert component["end_magnitude"] == pytest.approx(line_load[-1], rel=0.03)
+    assert component["fit_error"] <= 0.02
 
 
-def test_triangular_joists_become_a_udl_with_warning_at_two_to_one():
+def test_peaked_joist_loads_become_a_polyline():
     locations = [float(i) for i in range(9)]
     widths = trib_widths(locations)
     line_load = [1.0, 1.5, 2.0, 2.5, 3.0, 2.5, 2.0, 1.5, 1.0]
     reactions = [w * b for w, b in zip(line_load, widths)]
-    with pytest.warns(JoistLoadVariabilityWarning, match="FB1.0.*J1.0.*3.0:1"):
-        pm = convert_joist_point_loads(beam_with_points(joist_array("J1.0", locations, reactions)))
-    (component,) = converted(pm)[0]["expanded"]
-    assert component["profile"] == VARIABLE
-    assert component["start_magnitude"] == component["end_magnitude"]
-    assert resultant(component) == pytest.approx(sum(reactions))
-
-
-def test_variable_joists_under_two_to_one_do_not_warn():
-    locations = [float(i) for i in range(5)]
-    widths = trib_widths(locations)
-    line_load = [1.0, 1.6, 1.0, 1.6, 1.0]
-    reactions = [w * b for w, b in zip(line_load, widths)]
     with warnings.catch_warnings():
         warnings.simplefilter("error", JoistLoadVariabilityWarning)
         pm = convert_joist_point_loads(beam_with_points(joist_array("J1.0", locations, reactions)))
-    assert converted(pm)[0]["expanded"][0]["profile"] == VARIABLE
+    components = converted(pm)[0]["expanded"]
+    assert len(components) >= 2
+    assert {c["profile"] for c in components} == {POLYLINE}
+    assert [c["segment"] for c in components] == list(range(len(components)))
+    assert components[0]["start_loc"] == 0.0 and components[-1]["end_loc"] == 8.0
+    for a, b in zip(components, components[1:]):  # continuous
+        assert a["end_loc"] == b["start_loc"]
+        assert a["end_magnitude"] == pytest.approx(b["start_magnitude"])
+    assert components[0]["fit_error"] <= 0.02
+    assert sum(map(resultant, components)) == pytest.approx(sum(reactions))
 
 
-def test_each_load_case_is_classified_separately():
-    locations = [0.0, 1.0, 2.0, 3.0]
+def test_load_shift_above_the_limit_warns():
+    locations = [float(i) for i in range(9)]
+    line_load = [1.0, 1.5, 2.0, 2.5, 3.0, 2.5, 2.0, 1.5, 1.0]
+    reactions = [w * b for w, b in zip(line_load, trib_widths(locations))]
+    loads = joist_array("J1.0", locations, reactions)
+    # A very loose fit (one trapezoid) cannot follow the peak
+    with pytest.warns(JoistLoadVariabilityWarning, match=r"FB1.0.*J1.0 \(D\) moves .*% of its load"):
+        pm = convert_joist_point_loads(beam_with_points(loads), polyline_tol=0.9, load_shift_limit=0.001)
+    (component,) = converted(pm)[0]["expanded"]
+    assert component["load_shift"] > 0.001
+
+
+def test_each_load_case_is_converted_separately():
+    locations = [float(i) for i in range(11)]
     widths = trib_widths(locations)
     loads = [
         joist_point_load(f"J1.0-{i}", x, {"D": 2.0 * b, "L": (1.0 + x) * b})
@@ -209,7 +290,7 @@ def test_each_load_case_is_classified_separately():
     ]
     pm = convert_joist_point_loads(beam_with_points(loads))
     profiles = {c["case"]: c["profile"] for c in converted(pm)[0]["expanded"]}
-    assert profiles == {"D": UNIFORM, "L": INCREASING}
+    assert profiles == {"D": UNIFORM, "L": POLYLINE}
 
 
 @pytest.mark.parametrize(
@@ -220,24 +301,27 @@ def test_each_load_case_is_classified_separately():
         [7.0, 6.0, 5.0, 4.0, 3.0, 2.0, 1.0],
         [1.0, 5.0, 1.0, 5.0, 1.0, 5.0, 1.0],
         [0.1, 0.1, 0.1, 10.0, 10.0, 10.0, 10.0],
+        [2.0, 1.0, -1.0, -2.0, -1.0, 1.0, 2.0],
     ],
 )
-def test_converted_load_equals_the_joist_total(line_load):
+def test_converted_load_keeps_the_joist_total_and_resultant(line_load):
     locations = [0.0, 0.7, 1.9, 3.0, 4.2, 5.0, 6.1]
     reactions = [w * b for w, b in zip(line_load, trib_widths(locations))]
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", JoistLoadVariabilityWarning)
-        pm = convert_joist_point_loads(beam_with_points(joist_array("J1.0", locations, reactions)))
-    (component,) = converted(pm)[0]["expanded"]
-    assert math.isclose(resultant(component), sum(reactions), rel_tol=1e-12)
-    assert component["point_load_total"] == pytest.approx(sum(reactions))
-
-
-def test_fit_trapezoid_never_changes_sign():
-    locations = [0.0, 1.0, 2.0, 3.0]
-    w_start, w_end = fit_trapezoid(locations, [0.1, 0.1, 0.1, 10.0], total=6.0)
-    assert w_start >= 0 and w_end >= 0
-    assert (w_start + w_end) / 2 * 3.0 == pytest.approx(6.0)
+    pm = convert_joist_point_loads(beam_with_points(joist_array("J1.0", locations, reactions)))
+    components = converted(pm)[0]["expanded"]
+    assert math.isclose(sum(map(resultant, components)), sum(reactions), rel_tol=1e-9, abs_tol=1e-9)
+    assert components[0]["point_load_total"] == pytest.approx(sum(reactions))
+    if components[0]["profile"] == POLYLINE:
+        moment = sum(
+            (c["end_loc"] - c["start_loc"])
+            * (c["start_magnitude"] * (2 * c["start_loc"] + c["end_loc"])
+               + c["end_magnitude"] * (c["start_loc"] + 2 * c["end_loc"]))
+            / 6
+            for c in components
+        )
+        assert moment == pytest.approx(sum(x * p for x, p in zip(locations, reactions)), abs=1e-9)
+    else:
+        assert components[0]["load_shift"] <= 0.01
 
 
 def test_other_point_loads_are_kept():
@@ -278,14 +362,11 @@ def test_trib_view_for_a_single_occupancy_is_exact():
         joist_pms=joist_pms,
         occupancies={"res": {"D": 1.5, "L": 2.0}},
     )
-    view = converted(pm)[0]["trib_view"]["D"]
-    assert view == {
-        "occupancy": "res",
-        "pressure": 1.5,
-        "trib_width_start": pytest.approx(4.0),
-        "trib_width_end": pytest.approx(4.0),
-        "approximate": False,
-    }
+    dist_load = converted(pm)[0]
+    assert dist_load["trib_view"]["D"] == {"occupancy": "res", "pressure": 1.5, "approximate": False}
+    component = next(c for c in dist_load["expanded"] if c["case"] == "D")
+    assert component["trib_width_start"] == pytest.approx(4.0)
+    assert component["trib_width_end"] == pytest.approx(4.0)
 
 
 @pytest.mark.parametrize(
@@ -362,8 +443,9 @@ def test_converted_joist_loads_table():
     rows = rundown(array_graph()).converted_joist_loads("FB1.0")
     assert {row["case"] for row in rows} == {"D", "L"}
     row = next(row for row in rows if row["case"] == "D")
-    assert row["profile"] == UNIFORM
+    assert row["profile"] == UNIFORM and row["segment"] == 0
     assert row["array"] == "J1.0" and row["joists"] == 9
+    assert row["total"] == pytest.approx(row["joist_total"])
     # A 6.2 long joist trib strip (6.0 span + 0.1 each side) gives 3.1 to each support
     assert row["w_start"] == pytest.approx(3.1)
     assert row["occupancy"] == "res" and row["trib_width_start"] == pytest.approx(3.1)
@@ -397,8 +479,61 @@ def test_uniform_joists_give_the_same_reactions_as_point_loads():
 
 
 @pytest.mark.parametrize(
-    "kwargs", [{"joist_profile_rel_tol": -0.1}, {"joist_profile_rel_tol": 1.0}, {"joist_variability_ratio": 1.0}]
+    "kwargs",
+    [
+        {"joist_polyline_tol": 0.0},
+        {"joist_polyline_tol": 1.0},
+        {"joist_load_shift_limit": -0.01},
+        {"joist_load_shift_limit": 1.0},
+    ],
 )
 def test_conversion_settings_are_validated(kwargs):
     with pytest.raises(ValueError):
         LoadTracer(geometry_graph=DictGraph(), occupancies={"res": {"D": 1.0}}, **kwargs)
+
+
+@pytest.mark.parametrize("key", ["joist_profile_rel_tol", "joist_variability_ratio"])
+def test_replaced_conversion_settings_warn(key):
+    with pytest.warns(DeprecationWarning, match=key):
+        lt = LoadTracer(geometry_graph=DictGraph(), occupancies={"res": {"D": 1.0}}, **{key: 2.0})
+    assert lt.joist_polyline_tol == 0.02
+
+
+def rtu_graph(n: int = 21, length: float = 12.0, span: float = 3.0):
+    """
+    A joist array on a beam continuous over three supports, with an RTU load on
+    three joists near the middle support.
+    """
+    spacing = length / (n - 1)
+    joists = []
+    for i in range(n):
+        trib = spacing / 2 if i in (0, n - 1) else spacing
+        loads = [occupancy_load(0.0, span, "res", trib)]
+        if i in (11, 12, 13):
+            loads.append(occupancy_load(0.0, span, "rtu", trib))
+        joists.append(make_beam_pm(f"J1.0-{i}", span, [0.0, span], dist_loads=loads))
+    beam = make_beam_pm(
+        "FB1.0", length, [0.0, length / 2, length],
+        point_loads=[point_load(i * spacing, f"J1.0-{i}", 0) for i in range(n)],
+    )
+    wall = make_wall_pm("WT1.0", length, point_loads=[point_load(i * spacing, f"J1.0-{i}", 1) for i in range(n)])
+    return DictGraph().add_array("J1.0", joists, supported_by=("FB1.0", "WT1.0")).add_member(beam).add_member(wall)
+
+
+def test_polyline_gives_reactions_close_to_point_loads():
+    graph = rtu_graph()
+    occupancies = {"res": {"D": 1.0, "L": 2.0}, "rtu": {"D": 4.0}}
+    results = {}
+    for mode in ("point", "distributed"):
+        lt = LoadTracer(geometry_graph=graph, occupancies=occupancies, joist_loads=mode, show_progress=False)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", JoistTribWidthWarning)
+            warnings.simplefilter("error", JoistLoadVariabilityWarning)
+            lt.execute_analyses()
+        results[mode] = lt
+    dead = [c for c in results["distributed"].expanded_pm["FB1.0"]["loads"]["distributed_loads"][0]["expanded"] if c["case"] == "D"]
+    assert {c["profile"] for c in dead} == {POLYLINE}
+    for idx in (0, 1, 2):
+        assert results["distributed"].reactions["FB1.0"][idx]["FY"]["D"] == pytest.approx(
+            results["point"].reactions["FB1.0"][idx]["FY"]["D"], rel=0.01
+        )

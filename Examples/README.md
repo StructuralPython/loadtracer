@@ -7,7 +7,7 @@ drawing, then runs the load rundown with loadtracer, down to the reactions at th
 | Example | Drawing | Shows |
 |---|---|---|
 | [Example 1](Example%201/Example_1.ipynb) | `sketch_to_scale.pdf` | Joist arrays to foundation; joist loads as line loads and as occupancy × trib width |
-| [Example 2](Example%202/Example_2.ipynb) | `sketch_to_scale-w_manual_tag.pdf` | Manually tagged elements; when point joist loads matter (a variable joist array on a continuous beam) |
+| [Example 2](Example%202/Example_2.ipynb) | `sketch_to_scale-w_manual_tag.pdf` | Manually tagged elements; a variable joist array on a continuous beam, as a polyline load |
 | [Example 3](Example%203/Example_3.ipynb) | `sketch_to_scale-vertical-loads.pdf` | Load transfer through walls; roof joists on a wall; a wall line load onto a beam |
 | [Example 4](Example%204/Example_4.ipynb) | `sketch_to_scale-vertical-loads.pdf` | Columns and walls; a continuous beam with an uplift reaction |
 | [Example 5](Example%205/Example_5.ipynb) | `multi-page-plan.pdf` (not included, 37 MB) | Multi-page plan on one sheet; a column that transfers to one beam rather than every element it touches. Needs papermodels `main`: releases up to 0.22.2 cannot build this graph (`KeyError: 'element'`) |

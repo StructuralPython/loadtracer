@@ -48,23 +48,23 @@ A joist array from papermodels (e.g. `J1.0`) is analysed one joist at a time
 (`J1.0-0`, `J1.0-1`, ...), so the members under it receive one point load per
 joist. By default (`joist_loads="distributed"`), loadtracer replaces each run of
 joist point loads on a member with one distributed load over the run, in both
-`expanded_pm` and the analysis model. The total load is unchanged. The shape of
-the load depends on the joist reactions, divided by the width each joist carries:
+`expanded_pm` and the analysis model. For each load case it is a uniform load when
+that moves no more than `joist_load_shift_limit` (default 1%) of the load along the
+member, and otherwise a chain of trapezoids (a polyline) fitted to the joist
+reactions to within `joist_polyline_tol` (default 2%). The total load is
+unchanged, and a polyline also keeps its resultant location. A polyline that still moves more load than the
+limit raises a `JoistLoadVariabilityWarning`. See the
+[joist loads guide](https://loadtracer.structuralpython.com/guide/joist-loads.html)
+for the arithmetic.
 
-| Joist reactions | Distributed load |
-|---|---|
-| uniform (within `joist_profile_rel_tol`, default 10% of the mean) | uniform |
-| increasing or decreasing along the run | trapezoidal, fitted through the reactions |
-| anything else (e.g. peaking mid-run) | uniform, with a `JoistLoadVariabilityWarning` when the largest is `joist_variability_ratio` (default 2) or more times the smallest |
-
-`lt.converted_joist_loads()` returns one row per converted load and load case,
+`lt.converted_joist_loads()` returns one row per trapezoid of each converted load and load case,
 giving the load as a line load and as an occupancy pressure over a trib width, for
 comparing against hand calculations (e.g. as a table with pandas):
 
 ```python
 import pandas as pd
 pd.DataFrame(lt.converted_joist_loads("FB2.0"))
-#   member array  joists case  profile  start_loc  end_loc  w_start  w_end  ...  occupancy  pressure  trib_width_start  trib_width_end  approximate
+#   member array  joists case  profile  segment  start_loc  end_loc  w_start  w_end  ...  load_shift  occupancy  pressure  trib_width_start  trib_width_end  approximate
 ```
 
 The trib width is the line load divided by the pressure of the joists'

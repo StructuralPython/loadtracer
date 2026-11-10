@@ -29,6 +29,8 @@ from .expand_reactions import (
 from .validation import conform_loads_to_member, validate_papermodel
 
 REMOVED_INPUTS = ("elevations", "vertical_element_heights")
+# Joist load options replaced in 0.8.0 (joist_polyline_tol, joist_load_shift_limit)
+REMOVED_JOIST_OPTIONS = ("joist_profile_rel_tol", "joist_variability_ratio")
 
 
 class LoadTracer(BaseModel, arbitrary_types_allowed=True):
@@ -47,13 +49,17 @@ class LoadTracer(BaseModel, arbitrary_types_allowed=True):
         it supports then have missing reactions.
     'joist_loads': "distributed" or "point". With "distributed", the point loads
         from the joists of each joist array on a member are converted into one
-        distributed load (see joist_load_conversion). With "point", each joist
-        reaction is applied as a point load.
-    'joist_profile_rel_tol': The tolerance used to classify the joist loads as
-        uniform, increasing, decreasing or variable. It is relative: 0.10 is
-        10% of the mean line load.
-    'joist_variability_ratio': Joist loads that are "variable" and whose largest
-        line load is this many times the smallest raise a warning.
+        distributed load: uniform, or a chain of trapezoids (a polyline) that
+        follows the joist reactions (see joist_load_conversion). With "point",
+        each joist reaction is applied as a point load.
+    'joist_polyline_tol': How closely a polyline follows the joist reactions: the
+        largest difference between its average line load on a joist's strip and
+        the joist's line load, as a fraction of the mean line load (0.02 is 2%).
+    'joist_load_shift_limit': The load shift is how much of the joist load a
+        distributed load moves along the member (see joist_load_conversion). A
+        uniform load is used when its load shift is no more than this (0.01 is
+        1%); a polyline whose load shift is more raises a
+        JoistLoadVariabilityWarning.
     'frame_backend': "pynite" or "pycba". The library used to analyse beams.
         "pynite" (PyniteFEA) analyses every load direction. "pycba" (pycba, via
         pycba-tools; pip install loadtracer[pycba]) analyses in-plane bending
@@ -75,8 +81,8 @@ class LoadTracer(BaseModel, arbitrary_types_allowed=True):
     missing_reactions: Literal["raise", "ignore"] = "raise"
     on_error: Literal["raise", "collect"] = "raise"
     joist_loads: Literal["distributed", "point"] = "distributed"
-    joist_profile_rel_tol: float = Field(default=0.10, ge=0.0, lt=1.0)
-    joist_variability_ratio: float = Field(default=2.0, gt=1.0)
+    joist_polyline_tol: float = Field(default=0.02, gt=0.0, lt=1.0)
+    joist_load_shift_limit: float = Field(default=0.01, ge=0.0, lt=1.0)
     frame_backend: Literal["pynite", "pycba"] = "pynite"
     show_progress: bool = True
     models: Optional[dict] = None
@@ -102,6 +108,16 @@ class LoadTracer(BaseModel, arbitrary_types_allowed=True):
                         "be an error in a future version. Wall heights, when needed "
                         "for a vertical spread angle, are read from the wall's "
                         "annotation ('height').",
+                        DeprecationWarning,
+                        stacklevel=4,
+                    )
+                    data = {k: v for k, v in data.items() if k != key}
+            for key in REMOVED_JOIST_OPTIONS:
+                if key in data:
+                    warnings.warn(
+                        f"LoadTracer no longer uses '{key}'; it is ignored. Distributed "
+                        "joist loads are now fitted as polylines: see "
+                        "'joist_polyline_tol' and 'joist_load_shift_limit'.",
                         DeprecationWarning,
                         stacklevel=4,
                     )
@@ -262,8 +278,8 @@ class LoadTracer(BaseModel, arbitrary_types_allowed=True):
                 expanded_papermodel,
                 joist_pms=self.expanded_pm,
                 occupancies=self.occupancies,
-                rel_tol=self.joist_profile_rel_tol,
-                variability_ratio=self.joist_variability_ratio,
+                polyline_tol=self.joist_polyline_tol,
+                load_shift_limit=self.joist_load_shift_limit,
             )
         issues += conform_loads_to_member(expanded_papermodel)
         if issues:
@@ -293,14 +309,16 @@ class LoadTracer(BaseModel, arbitrary_types_allowed=True):
 
     def converted_joist_loads(self, tag: Optional[str] = None) -> list[dict]:
         """
-        Returns a list of rows, one per converted joist load and load case, for
-        comparing against hand calculations. Only the rows for member 'tag' are
-        returned when it is given.
+        Returns a list of rows, one per trapezoid of each converted joist load
+        and load case, for comparing against hand calculations. Only the rows
+        for member 'tag' are returned when it is given.
 
-        Each row has: member, array, joists (count), case, dir, profile,
-        start_loc, end_loc, w_start, w_end (the line load), total, max_min_ratio,
-        and the trib width view: occupancy, pressure, trib_width_start,
-        trib_width_end, approximate (None when not available).
+        Each row has: member, array, joists (count), case, dir, profile
+        ("uniform" or "polyline"), segment (the trapezoid's index in its load
+        case), start_loc, end_loc, w_start, w_end (the line load), total (the
+        trapezoid's load), joist_total (the joist reactions of the load case),
+        load_shift, fit_error, and the trib width view: occupancy, pressure,
+        trib_width_start, trib_width_end, approximate (None when not available).
         """
         rows = []
         for member, pm in (self.expanded_pm or {}).items():
@@ -319,16 +337,23 @@ class LoadTracer(BaseModel, arbitrary_types_allowed=True):
                             "case": component["case"],
                             "dir": component["dir"],
                             "profile": component["profile"],
+                            "segment": component["segment"],
                             "start_loc": component["start_loc"],
                             "end_loc": component["end_loc"],
                             "w_start": component["start_magnitude"],
                             "w_end": component["end_magnitude"],
-                            "total": component["point_load_total"],
-                            "max_min_ratio": component["max_min_ratio"],
+                            "total": (
+                                (component["start_magnitude"] + component["end_magnitude"])
+                                / 2
+                                * (component["end_loc"] - component["start_loc"])
+                            ),
+                            "joist_total": component["point_load_total"],
+                            "load_shift": component["load_shift"],
+                            "fit_error": component["fit_error"],
                             "occupancy": view.get("occupancy"),
                             "pressure": view.get("pressure"),
-                            "trib_width_start": view.get("trib_width_start"),
-                            "trib_width_end": view.get("trib_width_end"),
+                            "trib_width_start": component["trib_width_start"],
+                            "trib_width_end": component["trib_width_end"],
                             "approximate": view.get("approximate"),
                         }
                     )
