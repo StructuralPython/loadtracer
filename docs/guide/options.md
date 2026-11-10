@@ -27,9 +27,16 @@ lt = LoadTracer(
 `joist_loads`
 : `"distributed"` (default) or `"point"`. See {doc}`joist-loads`.
 
-`joist_profile_rel_tol`, `joist_variability_ratio`
-: How joist reactions are classified when they are converted. See
-  {doc}`joist-loads`.
+`joist_polyline_tol`
+: How closely a polyline follows the joist reactions, as a fraction of the
+  mean line load (default `0.02`). See {doc}`joist-loads`.
+
+`joist_load_shift_limit`
+: The largest load shift, as a fraction of the joist load, for which a
+  uniform load is used; a polyline above it raises a warning (default
+  `0.01`). See {doc}`joist-loads`. These replace `joist_profile_rel_tol` and
+  `joist_variability_ratio` (0.7.0 and earlier), which are now ignored with a
+  `DeprecationWarning`.
 
 `frame_backend`
 : The library that analyses beams and joists: `"pynite"` (default,
@@ -150,7 +157,8 @@ All warnings are subclasses of {class}`~loadtracer.errors.LoadTracerWarning`:
 
 - `LoadTracerWarning`: once per rundown, when `lt.issues` is not empty
 - {class}`~loadtracer.joist_load_conversion.JoistLoadVariabilityWarning`:
-  joist reactions that vary a lot were converted to a uniform load
+  the distributed load that replaces a joist array moves more than
+  `joist_load_shift_limit` of its load along the member
 - {class}`~loadtracer.joist_load_conversion.JoistTribWidthWarning`: a trib
   width in `converted_joist_loads()` is approximate
 

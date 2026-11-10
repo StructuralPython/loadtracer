@@ -9,7 +9,7 @@ reactions at the foundation.
 | Example | Shows |
 |---|---|
 | {doc}`Example 1 <notebooks/example-1>` | Joist arrays to foundation; joist loads as line loads and as occupancy × trib width |
-| {doc}`Example 2 <notebooks/example-2>` | Manually tagged elements; when point joist loads matter (a variable joist array on a continuous beam) |
+| {doc}`Example 2 <notebooks/example-2>` | Manually tagged elements; a variable joist array on a continuous beam, as a polyline load |
 | {doc}`Example 3 <notebooks/example-3>` | Load transfer through walls; roof joists on a wall; a wall line load onto a beam |
 | {doc}`Example 4 <notebooks/example-4>` | Columns and walls; a continuous beam with an uplift reaction |
 | {doc}`Example 5 <notebooks/example-5>` | A multi-page plan on one sheet; a column that transfers to one beam rather than every element it touches |

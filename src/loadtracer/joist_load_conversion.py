@@ -4,22 +4,32 @@ Conversion of joist point loads into distributed loads.
 A joist array from papermodels (e.g. "J1.0") is analysed as one member per joist
 ("J1.0-0", "J1.0-1", ...), so the members that support the array receive one
 point load per joist. That is the most accurate representation, but it is hard
-to compare against hand calculations, which use a line load (or an occupancy
-over a trib width). This module replaces the point loads of each joist array on
-a member with an equivalent distributed load.
+to compare against hand calculations, which use line loads. This module
+replaces the point loads of each joist array on a member with an equivalent
+distributed load: a uniform load where that is accurate enough, otherwise a
+piecewise-linear load (a "polyline": a chain of trapezoidal loads).
 
-For each run of joists and each load case, the joist reactions P_i are divided
-by the width that each joist carries (half the distance to its neighbours) to
-get line load intensities w_i. The profile of the intensities along the run
-decides the shape of the distributed load:
+For each run of joists and each load case:
 
-- "uniform": a uniform load (UDL)
-- "increasing" / "decreasing": a trapezoidal load fitted through the intensities
-- "variable": a UDL, with a JoistLoadVariabilityWarning when the largest
-    intensity is 'variability_ratio' (default 2) or more times the smallest
+1. Each joist carries a strip of the member that runs halfway to each of its
+   neighbours (to the end joist at the ends). Its intensity is its reaction
+   divided by the strip width: w_i = P_i / t_i.
+2. The "load shift" of a candidate distributed load is the largest difference,
+   at any boundary between two strips, between the load it has applied so far
+   (from the start of the run) and the joist reactions so far, as a fraction of
+   the total joist reaction. It measures how far the distributed load moves load
+   along the member, which is what changes moments and reactions.
+3. If a uniform load over the run has a load shift of no more than
+   'load_shift_limit' (default 1%), it is used.
+4. Otherwise a polyline is fitted (see fit_polyline): its corners ("knots") are
+   at joist locations, and are added until the average intensity on every strip
+   is within 'polyline_tol' (default 2%) of the joist's intensity.
+5. If the polyline's load shift is still more than 'load_shift_limit', a
+   JoistLoadVariabilityWarning is raised.
 
 In every case the total of the distributed load equals the total of the joist
-reactions it replaces.
+reactions it replaces. A polyline's resultant is also at the same location as
+theirs; a uniform load's is within the load shift limit.
 """
 
 from __future__ import annotations
@@ -30,18 +40,18 @@ import warnings
 from collections import defaultdict
 from typing import Optional
 
+import numpy as np
+
 from .errors import LoadTracerWarning
 
 UNIFORM = "uniform"
-INCREASING = "increasing"
-DECREASING = "decreasing"
-VARIABLE = "variable"
+POLYLINE = "polyline"
 
 
 class JoistLoadVariabilityWarning(LoadTracerWarning):
     """
-    The joist reactions of an array vary so much that the uniform load that
-    replaces them may not be representative.
+    The distributed load that replaces the joist reactions of an array moves
+    more of the load along the member than the load shift limit allows.
     """
 
 
@@ -99,98 +109,177 @@ def group_joist_point_loads(
     return [run for run in runs if len(run) >= min_joists]
 
 
+def strip_bounds(locations) -> np.ndarray:
+    """
+    Returns the boundaries of the strips carried by the joists at 'locations'
+    (sorted): the first location, the midpoints between neighbours and the last
+    location (len(locations) + 1 values).
+    """
+    x = np.asarray(locations, dtype=float)
+    return np.concatenate([x[:1], (x[:-1] + x[1:]) / 2, x[-1:]])
+
+
 def trib_widths(locations: list[float]) -> list[float]:
     """
     Returns the width carried by each joist at 'locations' (sorted): half of
     the distance to each neighbour. The widths add up to the length of the run.
     """
-    midpoints = [(a + b) / 2 for a, b in zip(locations, locations[1:])]
-    bounds = [locations[0]] + midpoints + [locations[-1]]
-    return [b - a for a, b in zip(bounds, bounds[1:])]
+    return np.diff(strip_bounds(locations)).tolist()
 
 
-def classify_profile(intensities: list[float], rel_tol: float = 0.10) -> str:
+def load_shift(strip_loads, point_loads) -> float:
     """
-    Returns one of "uniform", "increasing", "decreasing" or "variable" for the
-    line load 'intensities' along a joist run (in order of location).
-
-    'rel_tol' is relative to the load: the intensities are divided by their
-    mean magnitude before they are compared, so the result does not depend on
-    the units or the size of the load.
-
-    - "uniform": the normalized intensities vary by no more than 'rel_tol'
-    - "increasing": no step down of more than 'rel_tol' and a rise of more than
-        'rel_tol' from the first to the last
-    - "decreasing": the mirror of "increasing"
-    - "variable": anything else, including loads that change sign
+    Returns the load shift of a distributed load that puts 'strip_loads' on
+    the joist strips, against the joist reactions 'point_loads': the largest
+    difference between the two running totals at a boundary between strips,
+    as a fraction of the total magnitude of the joist reactions.
     """
-    scale = statistics.fmean(abs(w) for w in intensities)
-    if math.isclose(scale, 0.0, abs_tol=1e-12):
-        return UNIFORM
-    if any(w > 0 for w in intensities) and any(w < 0 for w in intensities):
-        return VARIABLE
-    normalized = [abs(w) / scale for w in intensities]
-    if max(normalized) - min(normalized) <= rel_tol:
-        return UNIFORM
-    steps = [b - a for a, b in zip(normalized, normalized[1:])]
-    rise = normalized[-1] - normalized[0]
-    if all(step >= -rel_tol for step in steps) and rise > rel_tol:
-        return INCREASING
-    if all(step <= rel_tol for step in steps) and -rise > rel_tol:
-        return DECREASING
-    return VARIABLE
+    point_loads = np.asarray(point_loads, dtype=float)
+    scale = np.abs(point_loads).sum()
+    if len(point_loads) < 2 or scale == 0.0:
+        return 0.0
+    running = np.cumsum(np.asarray(strip_loads, dtype=float) - point_loads)[:-1]
+    return float(np.abs(running).max() / scale)
 
 
-def max_min_ratio(intensities: list[float]) -> float:
+def strip_load_matrix(locations, knots: list[int]) -> np.ndarray:
     """
-    Returns the ratio of the largest to the smallest intensity magnitude
-    (infinity when the smallest is zero, 1.0 when all are zero).
-    """
-    magnitudes = [abs(w) for w in intensities]
-    if max(magnitudes) == 0.0:
-        return 1.0
-    if min(magnitudes) == 0.0:
-        return math.inf
-    return max(magnitudes) / min(magnitudes)
+    Returns the matrix A (one row per joist strip, one column per knot) with
+    A[i, k] = the integral over strip i of the hat function of knot k (1 at
+    knot k, 0 at the other knots, linear in between). A polyline with knot
+    values u puts the load A @ u on the strips.
 
-
-def fit_trapezoid(
-    locations: list[float], intensities: list[float], total: float
-) -> tuple[float, float]:
+    'knots' are indexes into 'locations' and must include the first and last.
+    The integrals are exact: each one is the difference of the running
+    integral of the (piecewise-linear) hat function at the strip boundaries.
     """
-    Returns the (start, end) intensities of a trapezoidal load over
-    locations[0] to locations[-1] whose resultant is 'total'. The slope comes
-    from a least squares line through the intensities; both ends are then
-    scaled so that the resultant is exactly 'total'. An end that would have
-    the opposite sign of 'total' is set to zero.
-    """
-    length = locations[-1] - locations[0]
-    x_mean = statistics.fmean(locations)
-    w_mean = statistics.fmean(intensities)
-    sxx = sum((x - x_mean) ** 2 for x in locations)
-    slope = (
-        sum((x - x_mean) * (w - w_mean) for x, w in zip(locations, intensities)) / sxx
+    x = np.asarray(locations, dtype=float)
+    xk = x[knots]
+    h = np.diff(xk)
+    n_knots = len(knots)
+    values = np.eye(n_knots)  # row j: the value of every hat function at knot j
+    # Running integral of every hat function at each knot (trapezoids are exact)
+    at_knots = np.vstack(
+        [np.zeros(n_knots), np.cumsum((values[:-1] + values[1:]) / 2 * h[:, None], axis=0)]
     )
-    w_start = w_mean + slope * (locations[0] - x_mean)
-    w_end = w_mean + slope * (locations[-1] - x_mean)
-    resultant = (w_start + w_end) / 2 * length
-    if math.isclose(resultant, 0.0, abs_tol=1e-12):
-        return total / length, total / length
-    factor = total / resultant
-    w_start, w_end = w_start * factor, w_end * factor
-    if w_start * total < 0:
-        w_start, w_end = 0.0, 2 * total / length
-    elif w_end * total < 0:
-        w_start, w_end = 2 * total / length, 0.0
-    return w_start, w_end
+    bounds = strip_bounds(x)
+    j = np.clip(np.searchsorted(xk, bounds, side="right") - 1, 0, n_knots - 2)
+    d = (bounds - xk[j])[:, None]
+    running = (
+        at_knots[j]
+        + values[j] * d
+        + (values[j + 1] - values[j]) * d**2 / (2 * h[j][:, None])
+    )
+    return np.diff(running, axis=0)
+
+
+def knot_load_moments(locations, knots: list[int]) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Returns (F, M): F[k] and M[k] are the integrals of the hat function of
+    knot k and of x times it over the run. A polyline with knot values u has
+    a total load F @ u and a first moment (about x = 0) M @ u.
+    """
+    xk = np.asarray(locations, dtype=float)[knots]
+    a, b = xk[:-1], xk[1:]
+    h = b - a
+    F = np.zeros(len(knots))
+    M = np.zeros(len(knots))
+    # On [a, b] the hat of the left knot falls from 1 to 0, the right one rises
+    F[:-1] += h / 2
+    F[1:] += h / 2
+    M[:-1] += h * (2 * a + b) / 6
+    M[1:] += h * (a + 2 * b) / 6
+    return F, M
+
+
+def fit_knot_values(locations, point_loads, knots: list[int]) -> np.ndarray:
+    """
+    Returns the values at 'knots' of the polyline that best matches the joist
+    reactions 'point_loads': the u that minimises
+
+        sum_i ((A u)_i - P_i)**2 / t_i
+
+    where (A u)_i is the load the polyline puts on strip i (see
+    strip_load_matrix) and t_i is the strip width, subject to
+
+        F @ u = sum_i P_i            (the same total)
+        M @ u = sum_i x_i * P_i      (the same resultant location)
+
+    (see knot_load_moments). The constrained least squares problem is solved
+    through its KKT equations.
+    """
+    x = np.asarray(locations, dtype=float)
+    P = np.asarray(point_loads, dtype=float)
+    weight = 1 / np.diff(strip_bounds(x))
+    A = strip_load_matrix(x, knots)
+    F, M = knot_load_moments(x, knots)
+    C = np.vstack([F, M])
+    d = np.array([P.sum(), (x * P).sum()])
+    n = len(knots)
+    kkt = np.zeros((n + 2, n + 2))
+    kkt[:n, :n] = A.T @ (A * weight[:, None])
+    kkt[:n, n:] = C.T
+    kkt[n:, :n] = C
+    rhs = np.concatenate([A.T @ (P * weight), d])
+    solution, *_ = np.linalg.lstsq(kkt, rhs, rcond=None)
+    return solution[:n]
+
+
+def fit_polyline(
+    locations, point_loads, tol: float = 0.02
+) -> tuple[list[int], np.ndarray, float]:
+    """
+    Returns (knots, knot_values, fit_error) of a polyline that replaces the
+    joist reactions 'point_loads' at 'locations' (sorted). 'knots' are indexes
+    into 'locations'.
+
+    The fit error is the largest difference between the average intensity of
+    the polyline on a joist's strip and the joist's intensity, as a fraction of
+    the mean intensity magnitude. Knots are added at the worst joist, starting
+    from the two end knots, until it is no more than 'tol'; then any interior
+    knot that is not needed to stay within 'tol' is removed. At worst every
+    joist is a knot, which matches every strip load exactly.
+    """
+    x = np.asarray(locations, dtype=float)
+    P = np.asarray(point_loads, dtype=float)
+    widths = np.diff(strip_bounds(x))
+    w = P / widths
+    scale = np.abs(w).mean()
+
+    def fit(knots):
+        u = fit_knot_values(x, P, knots)
+        if scale == 0.0:
+            return u, np.zeros(len(x))
+        strip_w = (strip_load_matrix(x, knots) @ u) / widths
+        return u, np.abs(strip_w - w) / scale
+
+    knots = [0, len(x) - 1]
+    u, errors = fit(knots)
+    while errors.max() > tol and len(knots) < len(x):
+        worst = next(int(i) for i in np.argsort(-errors) if i not in knots)
+        knots = sorted(knots + [worst])
+        u, errors = fit(knots)
+
+    removed = True
+    while removed and len(knots) > 2:
+        removed = False
+        trials = []
+        for k in knots[1:-1]:
+            trial = [j for j in knots if j != k]
+            trials.append((fit(trial)[1].max(), trial))
+        error, trial = min(trials, key=lambda item: item[0])
+        if error <= tol:
+            knots, removed = trial, True
+    u, errors = fit(knots)
+    return knots, u, float(errors.max())
 
 
 def convert_joist_point_loads(
     pm: dict,
     joist_pms: Optional[dict] = None,
     occupancies: Optional[dict] = None,
-    rel_tol: float = 0.10,
-    variability_ratio: float = 2.0,
+    polyline_tol: float = 0.02,
+    load_shift_limit: float = 0.01,
     min_joists: int = 2,
 ) -> dict:
     """
@@ -202,19 +291,27 @@ def convert_joist_point_loads(
     The distributed load has the usual keys of a transfer load (its
     'transfer_source' is the joist array) and:
         "converted_from": the tags of the joists
-        "trib_view": {case: {...}} the load as an occupancy over a trib width
-            (see trib_view)
-    Each of its "expanded" components also has:
-        "profile": the profile of the joist reactions (see classify_profile)
-        "point_load_total": the total of the joist reactions it replaces
-        "max_min_ratio": the ratio of the largest to the smallest intensity
+        "trib_view": {case: {...}} the occupancy and pressure that the trib
+            widths of the components are based on (see trib_view)
+    Its "expanded" components are the trapezoids of each load case, in order
+    along the run. Each one also has:
+        "profile": "uniform" or "polyline" (the shape used for its load case)
+        "segment": the index of the trapezoid in its load case's polyline
+        "point_load_total": the total of the joist reactions that the load
+            case's components replace
+        "load_shift": the load shift of the load case's components
+        "fit_error": the fit error of the load case's components (see
+            fit_polyline)
+        "trib_width_start", "trib_width_end": the line load as a trib width of
+            the occupancy in "trib_view" (None if there is no trib view)
 
     'joist_pms': The expanded papermodels of the joists, keyed by tag. Used for
         the trib width view.
     'occupancies': The occupancies of the load rundown. Used for the trib width view.
-    'rel_tol': The relative tolerance for classify_profile
-    'variability_ratio': A "variable" profile whose max/min intensity ratio is
-        this or more raises a JoistLoadVariabilityWarning
+    'polyline_tol': The fit tolerance of the polyline (see fit_polyline)
+    'load_shift_limit': A uniform load is used when its load shift is no more
+        than this; a polyline whose load shift is more than this raises a
+        JoistLoadVariabilityWarning
     """
     tag = pm["element_attributes"]["tag"]
     runs = group_joist_point_loads(pm["loads"]["point_loads"], min_joists=min_joists)
@@ -225,7 +322,7 @@ def convert_joist_point_loads(
             # Joists at the same location: there is no width to spread them over
             continue
         dist_load = _convert_run(
-            run, tag, joist_pms or {}, occupancies or {}, rel_tol, variability_ratio
+            run, tag, joist_pms or {}, occupancies or {}, polyline_tol, load_shift_limit
         )
         new_dist_loads.append(dist_load)
         converted_ids.update(id(load) for load in run)
@@ -242,16 +339,43 @@ def convert_joist_point_loads(
     return pm
 
 
+def _convert_case(
+    locations: list[float], loads: list[float], polyline_tol: float, load_shift_limit: float
+) -> tuple[str, list[tuple[float, float, float, float]], float, float]:
+    """
+    Returns (profile, segments, load_shift, fit_error) for the joist reactions
+    'loads' of one load case. Each segment is (x1, x2, w1, w2).
+    """
+    x = np.asarray(locations, dtype=float)
+    P = np.asarray(loads, dtype=float)
+    widths = np.diff(strip_bounds(x))
+    length = x[-1] - x[0]
+    udl = P.sum() / length
+    udl_shift = load_shift(udl * widths, P)
+    if udl_shift <= load_shift_limit:
+        scale = np.abs(P / widths).mean()
+        error = float(np.abs(udl - P / widths).max() / scale) if scale else 0.0
+        return UNIFORM, [(x[0], x[-1], udl, udl)], udl_shift, error
+
+    knots, u, error = fit_polyline(x, P, polyline_tol)
+    shift = load_shift(strip_load_matrix(x, knots) @ u, P)
+    xk = x[knots]
+    segments = [
+        (float(xk[j]), float(xk[j + 1]), float(u[j]), float(u[j + 1]))
+        for j in range(len(knots) - 1)
+    ]
+    return POLYLINE, segments, shift, error
+
+
 def _convert_run(
     run: list[dict],
     tag: str,
     joist_pms: dict,
     occupancies: dict,
-    rel_tol: float,
-    variability_ratio: float,
+    polyline_tol: float,
+    load_shift_limit: float,
 ) -> dict:
     locations = [load["location"] for load in run]
-    widths = trib_widths(locations)
     joist_tags = [load["transfer_source"] for load in run]
     parent = split_joist_tag(joist_tags[0])[0]
 
@@ -262,34 +386,44 @@ def _convert_run(
 
     components = []
     for (case, direction), loads in magnitudes.items():
-        intensities = [p / w for p, w in zip(loads, widths)]
-        total = sum(loads)
-        profile = classify_profile(intensities, rel_tol)
-        ratio = max_min_ratio(intensities)
-        if profile in (INCREASING, DECREASING):
-            w_start, w_end = fit_trapezoid(locations, intensities, total)
-        else:
-            w_start = w_end = total / (locations[-1] - locations[0])
-        if profile == VARIABLE and ratio >= variability_ratio:
+        profile, segments, shift, error = _convert_case(
+            locations, loads, polyline_tol, load_shift_limit
+        )
+        if shift > load_shift_limit:
             warnings.warn(
-                f"Member {tag}: the reactions of joist array {parent} ({case}) vary by "
-                f"{ratio:.1f}:1 along {locations[0]} to {locations[-1]}; they were "
-                "converted to a uniform load. Review the joist loads.",
+                f"Member {tag}: the distributed load that replaces joist array "
+                f"{parent} ({case}) moves {shift:.1%} of its load along "
+                f"{locations[0]} to {locations[-1]} (limit {load_shift_limit:.1%}). "
+                "Review the joist loads, or use joist_loads='point'.",
                 JoistLoadVariabilityWarning,
                 stacklevel=3,
             )
-        components.append(
-            {
-                "start_magnitude": w_start,
-                "end_magnitude": w_end,
-                "start_loc": locations[0],
-                "end_loc": locations[-1],
-                "case": case,
-                "dir": direction,
-                "profile": profile,
-                "point_load_total": total,
-                "max_min_ratio": ratio,
-            }
+        for idx, (x1, x2, w1, w2) in enumerate(segments):
+            components.append(
+                {
+                    "start_magnitude": w1,
+                    "end_magnitude": w2,
+                    "start_loc": x1,
+                    "end_loc": x2,
+                    "case": case,
+                    "dir": direction,
+                    "profile": profile,
+                    "segment": idx,
+                    "point_load_total": math.fsum(loads),
+                    "load_shift": shift,
+                    "fit_error": error,
+                }
+            )
+
+    view = trib_view(components, joist_tags, joist_pms, occupancies, tag, parent)
+    for component in components:
+        case_view = view.get(component["case"])
+        pressure = case_view["pressure"] if case_view else None
+        component["trib_width_start"] = (
+            abs(component["start_magnitude"]) / pressure if pressure else None
+        )
+        component["trib_width_end"] = (
+            abs(component["end_magnitude"]) / pressure if pressure else None
         )
 
     indexes = {load.get("transfer_reaction_index") for load in run}
@@ -307,7 +441,7 @@ def _convert_run(
         "end_magnitude": 1.0,
         "direction": run[0].get("direction", "gravity"),
         "converted_from": joist_tags,
-        "trib_view": trib_view(components, joist_tags, joist_pms, occupancies, tag, parent),
+        "trib_view": view,
         "expanded": components,
     }
 
@@ -321,15 +455,14 @@ def trib_view(
     parent: str,
 ) -> dict:
     """
-    Returns the converted load 'components' as an occupancy pressure over a
-    trib width, keyed by load case:
+    Returns the occupancy and pressure used to express the converted load
+    'components' as trib widths, keyed by load case:
 
-        {case: {"occupancy", "pressure", "trib_width_start", "trib_width_end",
-                "approximate"}}
+        {case: {"occupancy", "pressure", "approximate"}}
 
-    The occupancy is the one with the most applied area on the joists. The
-    trib widths are the line load divided by the pressure of that occupancy.
-    They are exact when the joists carry only that occupancy; otherwise
+    The occupancy is the one with the most applied area on the joists. A trib
+    width is a line load divided by the pressure of that occupancy. The trib
+    widths are exact when the joists carry only that occupancy; otherwise
     "approximate" is True (and a JoistTribWidthWarning is raised).
     """
     area_by_occupancy = defaultdict(float)
@@ -358,15 +491,9 @@ def trib_view(
         )
 
     view = {}
-    for component in components:
-        pressure = occupancies.get(occupancy, {}).get(component["case"])
+    for case in dict.fromkeys(component["case"] for component in components):
+        pressure = occupancies.get(occupancy, {}).get(case)
         if not pressure:
             continue
-        view[component["case"]] = {
-            "occupancy": occupancy,
-            "pressure": pressure,
-            "trib_width_start": abs(component["start_magnitude"]) / pressure,
-            "trib_width_end": abs(component["end_magnitude"]) / pressure,
-            "approximate": approximate,
-        }
+        view[case] = {"occupancy": occupancy, "pressure": pressure, "approximate": approximate}
     return view
