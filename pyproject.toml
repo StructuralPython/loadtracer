@@ -7,7 +7,7 @@ authors = [
 ]
 requires-python = ">=3.12"
 dependencies = [
-    "papermodels>=0.22.0",
+    "papermodels>=0.22.4",
     "loadbearing-wall>=0.5.0",
     "PyniteFEA>=1.6.2",
     "safer>=5.1.0",
@@ -41,7 +41,3 @@ docs = [
     "sphinx-copybutton>=0.5",
     "sphinx-design>=0.6",
 ]
-
-[tool.uv.sources]
-# Develop against the sibling papermodels checkout. CI installs with --no-sources.
-papermodels = { path = "../papermodels", editable = true }

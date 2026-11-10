@@ -99,8 +99,6 @@ reactions at the foundation.
 
 ## Development
 
-loadtracer is developed against a papermodels checkout next to this repository
-(`../papermodels`, see `[tool.uv.sources]` in `pyproject.toml`):
 
 ```
 uv sync
@@ -113,5 +111,8 @@ To build the documentation locally (into `docs/_build/html`):
 uv run --group docs sphinx-build -b html docs docs/_build/html
 ```
 
-The integration tests run the papermodels test fixtures end to end and are
-skipped when `../papermodels` is not present.
+The integration tests run the papermodels test drawings end to end. They are
+not in the papermodels package, so they are read from a papermodels checkout
+next to this repository (`../papermodels`) when there is one, and otherwise
+downloaded from GitHub at the installed papermodels version and cached in
+`~/.cache/loadtracer`. The tests are skipped when neither is available.
