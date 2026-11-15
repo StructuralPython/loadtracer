@@ -307,6 +307,47 @@ class LoadTracer(BaseModel, arbitrary_types_allowed=True):
         self.models[tag] = member_model.dump_model()
         self.reactions[tag] = member_model.get_reactions()
 
+    def to_beamz(
+        self,
+        tag: str,
+        precision: int = 3,
+        length_unit: Optional[str] = None,
+        force_unit: Optional[str] = None,
+        **beam_options,
+    ) -> dict:
+        """
+        Returns horizontal member 'tag' as a beam in the beamz9000 scheme
+        format (https://beamz9000.structuralpython.com/scheme.html), with its
+        fully resolved loads: every load from occupancies and from the members
+        above, one load per load case, at its magnitude. The beam is the
+        member's analysis model (the same nodes and supports), so analysing it
+        in beamz9000 gives the reactions loadtracer found.
+
+        Run execute_analyses first. See loadtracer.beamz.member_to_beamz for
+        'precision', 'length_unit', 'force_unit' and 'beam_options'.
+
+        To draw it with beamz9000:
+
+            import beamz9000 as bz
+            beam = tracer.to_beamz("FB3.1", results=["forces", "reactions"])
+            bz.draw(bz.parse_scheme({"FB3.1": beam}), "FB3.1.svg")
+        """
+        from .beamz import member_to_beamz
+
+        if self.expanded_pm is None:
+            raise LoadTracerError("Run execute_analyses() before exporting members.", tag)
+        if tag not in self.expanded_pm:
+            if self.errors and tag in self.errors:
+                raise LoadTracerError(f"The member was not analysed: {self.errors[tag]}", tag)
+            raise KeyError(f"no traced member {tag!r}")
+        return member_to_beamz(
+            self.expanded_pm[tag],
+            precision=precision,
+            length_unit=length_unit,
+            force_unit=force_unit,
+            **beam_options,
+        )
+
     def converted_joist_loads(self, tag: Optional[str] = None) -> list[dict]:
         """
         Returns a list of rows, one per trapezoid of each converted joist load

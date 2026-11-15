@@ -54,6 +54,34 @@ back into PyniteFEA models, or with
 [pycba-tools](https://pypi.org/project/pycba-tools/) when
 `frame_backend="pycba"` (see {doc}`options`).
 
+## Beam diagrams with beamz9000
+
+{meth}`~loadtracer.load_tracer.LoadTracer.to_beamz` returns a traced horizontal
+member as a beam in the [beamz9000](https://beamz9000.structuralpython.com)
+scheme format, with its fully resolved loads: every load from occupancies and
+from the members above, one load per load case, at its magnitude. Draw it as a
+free-body diagram, with its shear and moment if you like:
+
+```python
+import beamz9000 as bz   # uv add "beamz9000[pycba]"
+
+beam = lt.to_beamz("FB3.1", results=["forces", "reactions"], node_labels="auto")
+bz.draw(bz.parse_scheme({"FB3.1": beam}), "FB3.1.svg")
+```
+
+- The beam is the member's analysis model: the same length, nodes and supports
+  (pin, roller or fixed), so beamz9000 finds the reactions in `lt.reactions`
+  (with upward reactions positive; see {ref}`the sign convention <sign-convention>`).
+- Gravity loads point down, in-plane point loads (`FX`) are drawn horizontal and
+  moments (`MZ`) counter-clockwise positive. Components that can't be drawn on
+  a beam (out-of-plane loads, in-plane distributed loads) are left out with a
+  `LoadTracerWarning`.
+- `length_unit` and `force_unit` (e.g. `"ft"` and `"kip"`) write the values with
+  units; add a forallpeople environment to the scheme:
+  `bz.parse_scheme({"_environment": "structural", "FB3.1": beam})`.
+- Any other beamz9000 beam keys pass through, e.g. `e=`, `i=` or
+  `load_combos=[...]`.
+
 ## Issues
 
 `lt.issues` lists, for each member, the input that loadtracer changed in order

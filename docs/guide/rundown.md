@@ -79,6 +79,7 @@ spread down the wall at an angle (see {doc}`options`).
 **Columns** add up their loads. Point load locations are ignored, and a
 distributed load on a column (e.g. from a wall above) is added as its resultant.
 
+(sign-convention)=
 ## Sign convention
 
 Load components are positive in the direction that papermodels gives them
