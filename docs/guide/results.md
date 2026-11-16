@@ -63,7 +63,7 @@ from the members above, one load per load case, at its magnitude. Draw it as a
 free-body diagram, with its shear and moment if you like:
 
 ```python
-import beamz9000 as bz   # uv add "beamz9000[pycba]"
+import beamz9000 as bz   # uv add "beamz9000[pycba]>=0.4"
 
 beam = lt.to_beamz("FB3.1", results=["forces", "reactions"], node_labels="auto")
 bz.draw(bz.parse_scheme({"FB3.1": beam}), "FB3.1.svg")
@@ -72,6 +72,8 @@ bz.draw(bz.parse_scheme({"FB3.1": beam}), "FB3.1.svg")
 - The beam is the member's analysis model: the same length, nodes and supports
   (pin, roller or fixed), so beamz9000 finds the reactions in `lt.reactions`
   (with upward reactions positive; see {ref}`the sign convention <sign-convention>`).
+- A distributed joist load fitted as a polyline (see {doc}`joist-loads`) is a run
+  of trapezoids; beamz9000 0.4 and later draws each run as one load.
 - Gravity loads point down, in-plane point loads (`FX`) are drawn horizontal and
   moments (`MZ`) counter-clockwise positive. Components that can't be drawn on
   a beam (out-of-plane loads, in-plane distributed loads) are left out with a
