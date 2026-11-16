@@ -20,3 +20,9 @@ Load processing
 ------------------------------------
 
 .. automodule:: loadtracer.joist_load_conversion
+
+``loadtracer.beamz``
+--------------------
+
+.. automodule:: loadtracer.beamz
+   :members: member_to_beamz
